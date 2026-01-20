@@ -2,7 +2,7 @@
   "id": "slack-notifications",
   "name": "Slack Notifications",
   "description": "Get real-time Slack notifications when invoices are uploaded, processed, or exported. Stay informed about your invoice activity without leaving Slack.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
