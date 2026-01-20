@@ -4,13 +4,13 @@
  * Sends a Slack notification when a document is modified.
  */
 
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, Company } from '@invoiceleaf/integration-sdk';
 import type {
   DocumentEventInput,
   DocumentNotificationResult,
   SlackIntegrationConfig,
-  Company,
 } from '../types.js';
+import { getVendorName, getTotal, getCurrencyCode, getCompanyId } from '../types.js';
 import { SlackClient } from '../slack/client.js';
 import { buildDocumentUpdatedBlocks, statusAttachment } from '../slack/blocks.js';
 import { shouldNotify, isNotificationEnabled } from '../utils/filters.js';
@@ -68,15 +68,20 @@ export const handleDocumentUpdated: IntegrationHandler<
     };
   }
 
+  const vendorName = getVendorName(document);
+  const total = getTotal(document);
+  const currencyCode = getCurrencyCode(document);
+  const companyId = getCompanyId(document);
+
   // Fetch company for context (optional)
   let company: Company | null = null;
-  if (document.companyId) {
+  if (companyId) {
     try {
-      const companies = await data.listCompanies({ ids: [document.companyId] });
+      const companies = await data.listCompanies({ ids: [companyId] });
       company = companies.items[0] || null;
     } catch (error) {
       logger.warn('Failed to fetch company', {
-        companyId: document.companyId,
+        companyId,
         error: (error as Error).message,
       });
     }
@@ -84,8 +89,8 @@ export const handleDocumentUpdated: IntegrationHandler<
 
   // Build Slack message
   const blocks = buildDocumentUpdatedBlocks(document, company, spaceId);
-  const amount = formatCurrency(document.total, document.currency);
-  const fallbackText = `Invoice updated: ${document.vendorName || 'Unknown vendor'} - ${amount}`;
+  const amount = formatCurrency(total, currencyCode);
+  const fallbackText = `Invoice updated: ${vendorName || 'Unknown vendor'} - ${amount}`;
 
   // Send to Slack
   try {
@@ -101,14 +106,14 @@ export const handleDocumentUpdated: IntegrationHandler<
 
     logger.info('Document updated notification sent', {
       documentId: document.id,
-      vendorName: document.vendorName,
+      vendorName,
     });
 
     return {
       success: true,
       documentId: document.id,
-      vendorName: document.vendorName || undefined,
-      amount: document.total,
+      vendorName: vendorName || undefined,
+      amount: total,
     };
   } catch (error) {
     logger.error('Failed to send Slack notification', {

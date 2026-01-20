@@ -353,69 +353,122 @@ export interface DailySummaryStats {
 }
 
 // ============================================================================
-// InvoiceLeaf Data Types (from Context API)
+// InvoiceLeaf Data Types (re-exported from SDK)
 // ============================================================================
 
+// Re-export types from SDK for convenience
+export type {
+  Document,
+  Company,
+  Export,
+  Category,
+  Tag,
+  DocumentStatus,
+} from '@invoiceleaf/integration-sdk';
+
+// ============================================================================
+// Document Helper Functions
+// ============================================================================
+
+import type { Document } from '@invoiceleaf/integration-sdk';
+
 /**
- * Document from InvoiceLeaf API.
+ * Gets the vendor/supplier name from a document.
  */
-export interface Document {
-  id: string;
-  spaceId: string;
-  documentNumber?: string;
-  documentDate?: string;
-  dueDate?: string;
-  vendorName?: string;
-  vendorVatId?: string;
-  total?: number;
-  netTotal?: number;
-  vatTotal?: number;
-  currency?: string;
-  status: DocumentStatus;
-  categoryId?: string;
-  categoryName?: string;
-  companyId?: string;
-  tags?: string[];
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-  processedAt?: string;
+export function getVendorName(doc: Document): string | undefined {
+  return doc.supplier?.name;
 }
 
 /**
- * Document status.
+ * Gets the total amount from a document.
  */
-export type DocumentStatus =
-  | 'UPLOADED'
-  | 'PROCESSING'
-  | 'PROCESSED'
-  | 'PENDING_REVIEW'
-  | 'APPROVED'
-  | 'EXPORTED'
-  | 'ERROR';
-
-/**
- * Company from InvoiceLeaf API.
- */
-export interface Company {
-  id: string;
-  name: string;
-  vatId?: string;
-  address?: string;
-  city?: string;
-  country?: string;
+export function getTotal(doc: Document): number | undefined {
+  return doc.totalAmount;
 }
 
 /**
- * Export from InvoiceLeaf API.
+ * Gets the net amount from a document.
  */
-export interface Export {
-  id: string;
-  spaceId: string;
-  format: string;
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
-  documentCount: number;
-  downloadUrl?: string;
-  createdAt: string;
-  completedAt?: string;
+export function getNetTotal(doc: Document): number | undefined {
+  return doc.netAmount;
+}
+
+/**
+ * Gets the VAT/tax amount from a document.
+ */
+export function getVatTotal(doc: Document): number | undefined {
+  return doc.taxAmount;
+}
+
+/**
+ * Gets the currency code from a document.
+ */
+export function getCurrencyCode(doc: Document): string | undefined {
+  return doc.currency?.code;
+}
+
+/**
+ * Gets the invoice number from a document.
+ */
+export function getInvoiceNumber(doc: Document): string | undefined {
+  return doc.invoiceId;
+}
+
+/**
+ * Gets the invoice date from a document.
+ */
+export function getInvoiceDate(doc: Document): string | undefined {
+  return doc.invoiceDate;
+}
+
+/**
+ * Gets the category name from a document.
+ */
+export function getCategoryName(doc: Document): string | undefined {
+  return doc.category?.name;
+}
+
+/**
+ * Gets the category ID from a document.
+ */
+export function getCategoryId(doc: Document): string | undefined {
+  return doc.category?.id;
+}
+
+/**
+ * Gets the company/supplier ID from a document.
+ */
+export function getCompanyId(doc: Document): string | undefined {
+  return doc.supplier?.id;
+}
+
+/**
+ * Gets the created timestamp as ISO string.
+ */
+export function getCreatedAt(doc: Document): string {
+  return doc.created ? new Date(doc.created).toISOString() : new Date().toISOString();
+}
+
+/**
+ * Gets the updated timestamp as ISO string.
+ */
+export function getUpdatedAt(doc: Document): string {
+  return doc.lastUpdate ? new Date(doc.lastUpdate).toISOString() : getCreatedAt(doc);
+}
+
+/**
+ * Gets the display status for a document.
+ */
+export function getDisplayStatus(doc: Document): string {
+  if (doc.errorType && doc.errorType !== 0) return 'ERROR';
+  if (doc.approved) return 'APPROVED';
+  if (doc.processed) return 'PROCESSED';
+  return doc.documentStatus || 'UPLOADED';
+}
+
+/**
+ * Gets the space ID from a document.
+ */
+export function getSpaceId(doc: Document): string | undefined {
+  return doc.space?.id;
 }

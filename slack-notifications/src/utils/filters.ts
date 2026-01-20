@@ -4,7 +4,9 @@
  * Logic for filtering which documents trigger notifications.
  */
 
-import type { Document, SlackIntegrationConfig } from '../types.js';
+import type { Document } from '@invoiceleaf/integration-sdk';
+import type { SlackIntegrationConfig } from '../types.js';
+import { getVendorName, getTotal, getCurrencyCode, getCategoryId, getCategoryName } from '../types.js';
 
 /**
  * Filter options extracted from config.
@@ -82,8 +84,8 @@ function checkMinimumAmount(
     return { shouldNotify: true };
   }
 
-  const documentAmount = document.total ?? 0;
-  const documentCurrency = document.currency?.toUpperCase() || 'EUR';
+  const documentAmount = getTotal(document) ?? 0;
+  const documentCurrency = getCurrencyCode(document)?.toUpperCase() || 'EUR';
   const filterCurrency = minimumAmountCurrency?.toUpperCase() || 'EUR';
 
   // If currencies don't match, we can't compare accurately
@@ -116,7 +118,8 @@ function checkVendorFilter(
     return { shouldNotify: true };
   }
 
-  const documentVendor = (document.vendorName || '').toLowerCase().trim();
+  const vendorName = getVendorName(document);
+  const documentVendor = (vendorName || '').toLowerCase().trim();
 
   // If vendor is not set on document, skip filter (allow notification)
   if (!documentVendor) {
@@ -132,7 +135,7 @@ function checkVendorFilter(
   if (!matches) {
     return {
       shouldNotify: false,
-      reason: `vendor_not_in_filter:${document.vendorName}`,
+      reason: `vendor_not_in_filter:${vendorName}`,
     };
   }
 
@@ -153,8 +156,11 @@ function checkCategoryFilter(
     return { shouldNotify: true };
   }
 
+  const categoryId = getCategoryId(document);
+  const categoryName = getCategoryName(document);
+
   // If no category assigned, skip filter (allow notification)
-  if (!document.categoryId && !document.categoryName) {
+  if (!categoryId && !categoryName) {
     return { shouldNotify: true };
   }
 
@@ -163,13 +169,13 @@ function checkCategoryFilter(
     const normalizedFilter = filterCategory.toLowerCase().trim();
 
     // Match by ID
-    if (document.categoryId?.toLowerCase() === normalizedFilter) {
+    if (categoryId?.toLowerCase() === normalizedFilter) {
       return true;
     }
 
     // Match by name (partial match)
-    if (document.categoryName) {
-      const normalizedName = document.categoryName.toLowerCase().trim();
+    if (categoryName) {
+      const normalizedName = categoryName.toLowerCase().trim();
       return normalizedName.includes(normalizedFilter) || normalizedFilter.includes(normalizedName);
     }
 
@@ -179,7 +185,7 @@ function checkCategoryFilter(
   if (!matches) {
     return {
       shouldNotify: false,
-      reason: `category_not_in_filter:${document.categoryName || document.categoryId}`,
+      reason: `category_not_in_filter:${categoryName || categoryId}`,
     };
   }
 

@@ -4,13 +4,13 @@
  * Sends a Slack notification when a document has been processed (OCR/extraction complete).
  */
 
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, Company } from '@invoiceleaf/integration-sdk';
 import type {
   DocumentEventInput,
   DocumentNotificationResult,
   SlackIntegrationConfig,
-  Company,
 } from '../types.js';
+import { getVendorName, getTotal, getCurrencyCode, getCompanyId } from '../types.js';
 import { SlackClient } from '../slack/client.js';
 import { buildDocumentProcessedBlocks, statusAttachment } from '../slack/blocks.js';
 import { shouldNotify, isNotificationEnabled } from '../utils/filters.js';
@@ -57,11 +57,16 @@ export const handleDocumentProcessed: IntegrationHandler<
 
   // Apply filters
   const filterResult = shouldNotify(document, config);
+  const vendorName = getVendorName(document);
+  const total = getTotal(document);
+  const currencyCode = getCurrencyCode(document);
+  const companyId = getCompanyId(document);
+
   if (!filterResult.shouldNotify) {
     logger.debug('Document filtered out', {
       documentId: document.id,
-      vendorName: document.vendorName,
-      amount: document.total,
+      vendorName,
+      amount: total,
       reason: filterResult.reason,
     });
     return {
@@ -69,20 +74,20 @@ export const handleDocumentProcessed: IntegrationHandler<
       skipped: true,
       reason: filterResult.reason,
       documentId: document.id,
-      vendorName: document.vendorName || undefined,
-      amount: document.total,
+      vendorName: vendorName || undefined,
+      amount: total,
     };
   }
 
   // Fetch company for context (optional)
   let company: Company | null = null;
-  if (document.companyId) {
+  if (companyId) {
     try {
-      const companies = await data.listCompanies({ ids: [document.companyId] });
+      const companies = await data.listCompanies({ ids: [companyId] });
       company = companies.items[0] || null;
     } catch (error) {
       logger.warn('Failed to fetch company', {
-        companyId: document.companyId,
+        companyId,
         error: (error as Error).message,
       });
     }
@@ -90,8 +95,8 @@ export const handleDocumentProcessed: IntegrationHandler<
 
   // Build Slack message
   const blocks = buildDocumentProcessedBlocks(document, company, spaceId);
-  const amount = formatCurrency(document.total, document.currency);
-  const fallbackText = `Invoice processed: ${document.vendorName || 'Unknown vendor'} - ${amount}`;
+  const amount = formatCurrency(total, currencyCode);
+  const fallbackText = `Invoice processed: ${vendorName || 'Unknown vendor'} - ${amount}`;
 
   // Send to Slack
   try {
@@ -107,16 +112,16 @@ export const handleDocumentProcessed: IntegrationHandler<
 
     logger.info('Document processed notification sent', {
       documentId: document.id,
-      vendorName: document.vendorName,
-      amount: document.total,
-      currency: document.currency,
+      vendorName,
+      amount: total,
+      currency: currencyCode,
     });
 
     return {
       success: true,
       documentId: document.id,
-      vendorName: document.vendorName || undefined,
-      amount: document.total,
+      vendorName: vendorName || undefined,
+      amount: total,
     };
   } catch (error) {
     logger.error('Failed to send Slack notification', {

@@ -1,0 +1,192 @@
+{
+  "id": "slack-notifications",
+  "name": "Slack Notifications",
+  "description": "Get real-time Slack notifications when invoices are uploaded, processed, or exported. Stay informed about your invoice activity without leaving Slack.",
+  "version": "1.0.1",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "slack",
+  "category": "notifications",
+  "tags": ["slack", "notifications", "alerts", "messaging", "real-time"],
+  "dataAccess": ["documents", "companies", "categories"],
+  "externalAuth": [],
+  "triggers": [
+    {
+      "id": "on-document-created",
+      "type": "event",
+      "name": "Document Uploaded",
+      "description": "Triggered when a new document is uploaded",
+      "events": ["document.created"],
+      "handler": "handleDocumentCreated",
+      "configurable": true
+    },
+    {
+      "id": "on-document-processed",
+      "type": "event",
+      "name": "Document Processed",
+      "description": "Triggered when document processing (OCR/extraction) completes",
+      "events": ["document.processed"],
+      "handler": "handleDocumentProcessed",
+      "configurable": true
+    },
+    {
+      "id": "on-document-updated",
+      "type": "event",
+      "name": "Document Updated",
+      "description": "Triggered when a document is modified",
+      "events": ["document.updated"],
+      "handler": "handleDocumentUpdated",
+      "configurable": true
+    },
+    {
+      "id": "on-export-completed",
+      "type": "event",
+      "name": "Export Ready",
+      "description": "Triggered when an export is ready for download",
+      "events": ["export.completed"],
+      "handler": "handleExportCompleted",
+      "configurable": true
+    },
+    {
+      "id": "daily-summary",
+      "type": "schedule",
+      "name": "Daily Summary",
+      "description": "Sends a daily summary of invoice activity at 9 AM",
+      "schedule": "0 9 * * *",
+      "handler": "handleDailySummary",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Send Test Message",
+      "description": "Send a test message to verify the Slack connection",
+      "handler": "sendTestMessage",
+      "icon": "send"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "webhookUrl": {
+        "type": "string",
+        "title": "Slack Webhook URL",
+        "description": "Create an Incoming Webhook in your Slack workspace settings. Go to api.slack.com/apps → Create App → Incoming Webhooks → Add New Webhook.",
+        "format": "uri",
+        "pattern": "^https://hooks\\.slack\\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[a-zA-Z0-9]+$"
+      },
+      "channelOverride": {
+        "type": "string",
+        "title": "Channel Override",
+        "description": "Override the default channel (e.g., #invoices). Leave empty to use webhook default."
+      },
+      "username": {
+        "type": "string",
+        "title": "Bot Username",
+        "description": "Custom username for the bot (e.g., InvoiceLeaf). Leave empty for default.",
+        "maxLength": 80
+      },
+      "iconEmoji": {
+        "type": "string",
+        "title": "Bot Icon Emoji",
+        "description": "Custom emoji for the bot icon (e.g., :receipt:). Leave empty for default.",
+        "pattern": "^:[a-z0-9_+-]+:$"
+      },
+      "notifyOnDocumentCreated": {
+        "type": "boolean",
+        "title": "Notify on document upload",
+        "description": "Send a notification when a new document is uploaded",
+        "default": false
+      },
+      "notifyOnDocumentProcessed": {
+        "type": "boolean",
+        "title": "Notify when processing completes",
+        "description": "Send a notification when invoice processing is complete with extracted details",
+        "default": true
+      },
+      "notifyOnDocumentUpdated": {
+        "type": "boolean",
+        "title": "Notify on document updates",
+        "description": "Send a notification when a document is modified",
+        "default": false
+      },
+      "notifyOnExportCompleted": {
+        "type": "boolean",
+        "title": "Notify when exports are ready",
+        "description": "Send a notification when an export is ready for download",
+        "default": true
+      },
+      "enableDailySummary": {
+        "type": "boolean",
+        "title": "Enable daily summary",
+        "description": "Send a daily summary of invoice activity at 9 AM",
+        "default": false
+      },
+      "minimumAmount": {
+        "type": "number",
+        "title": "Minimum Amount",
+        "description": "Only notify for invoices above this amount (0 = all invoices)",
+        "minimum": 0,
+        "default": 0
+      },
+      "minimumAmountCurrency": {
+        "type": "string",
+        "title": "Minimum Amount Currency",
+        "description": "Currency for the minimum amount filter",
+        "enum": ["EUR", "USD", "GBP", "CHF", "CAD", "AUD"],
+        "default": "EUR"
+      },
+      "vendorFilter": {
+        "type": "array",
+        "title": "Vendor Filter",
+        "description": "Only notify for invoices from these vendors (empty = all vendors)",
+        "items": {
+          "type": "string"
+        },
+        "uniqueItems": true,
+        "default": []
+      },
+      "categoryFilter": {
+        "type": "array",
+        "title": "Category Filter",
+        "description": "Only notify for invoices in these categories (empty = all categories)",
+        "items": {
+          "type": "string"
+        },
+        "uniqueItems": true,
+        "default": []
+      }
+    },
+    "required": ["webhookUrl"]
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Connection",
+        "description": "Configure your Slack webhook connection",
+        "fields": ["webhookUrl", "channelOverride", "username", "iconEmoji"]
+      },
+      {
+        "title": "Notification Settings",
+        "description": "Choose which events trigger notifications",
+        "fields": [
+          "notifyOnDocumentCreated",
+          "notifyOnDocumentProcessed",
+          "notifyOnDocumentUpdated",
+          "notifyOnExportCompleted",
+          "enableDailySummary"
+        ]
+      },
+      {
+        "title": "Filters",
+        "description": "Filter which invoices trigger notifications",
+        "fields": ["minimumAmount", "minimumAmountCurrency", "vendorFilter", "categoryFilter"]
+      }
+    ],
+    "setupInstructions": "## How to Set Up Slack Notifications\n\n1. **Create a Slack App**\n   - Go to [api.slack.com/apps](https://api.slack.com/apps)\n   - Click \"Create New App\" → \"From scratch\"\n   - Name it \"InvoiceLeaf\" and select your workspace\n\n2. **Enable Incoming Webhooks**\n   - In your app settings, go to \"Incoming Webhooks\"\n   - Toggle \"Activate Incoming Webhooks\" to On\n   - Click \"Add New Webhook to Workspace\"\n   - Select the channel where you want notifications\n\n3. **Copy the Webhook URL**\n   - Copy the webhook URL (starts with https://hooks.slack.com/services/...)\n   - Paste it in the \"Slack Webhook URL\" field below\n\n4. **Configure Notifications**\n   - Choose which events you want to be notified about\n   - Optionally set filters for amount or vendor\n\n5. **Test the Connection**\n   - Click \"Send Test Message\" to verify everything works"
+  }
+}

@@ -4,14 +4,14 @@
  * Sends a daily summary of invoice activity to Slack.
  */
 
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, Document } from '@invoiceleaf/integration-sdk';
 import type {
   DailySummaryInput,
   DailySummaryResult,
   DailySummaryStats,
   SlackIntegrationConfig,
-  Document,
 } from '../types.js';
+import { getVendorName, getTotal, getCurrencyCode, getCategoryName } from '../types.js';
 import { SlackClient } from '../slack/client.js';
 import { buildDailySummaryBlocks, statusAttachment } from '../slack/blocks.js';
 import { isNotificationEnabled } from '../utils/filters.js';
@@ -64,11 +64,11 @@ export const handleDailySummary: IntegrationHandler<
   let documents: Document[];
   try {
     const result = await data.listDocuments({
-      processedAfter: yesterday.toISOString(),
-      processedBefore: today.toISOString(),
-      limit: 1000,
+      fromDate: yesterday.toISOString(),
+      toDate: today.toISOString(),
+      size: 1000,
     });
-    documents = result.items as Document[];
+    documents = result.items;
   } catch (error) {
     logger.error('Failed to fetch documents for summary', {
       error: (error as Error).message,
@@ -145,27 +145,27 @@ function calculateStats(documents: Document[]): DailySummaryStats {
   // Count by status
   const processedCount = documents.length;
   const pendingCount = documents.filter(
-    (d) => d.status === 'PENDING_REVIEW'
+    (d) => !d.approved && d.processed
   ).length;
 
   // Sum total amounts (group by currency, use the most common one)
   const currencyCounts: Record<string, { count: number; total: number }> = {};
 
   for (const doc of documents) {
-    const currency = doc.currency || 'EUR';
+    const currency = getCurrencyCode(doc) || 'EUR';
     if (!currencyCounts[currency]) {
       currencyCounts[currency] = { count: 0, total: 0 };
     }
     currencyCounts[currency].count++;
-    currencyCounts[currency].total += doc.total || 0;
+    currencyCounts[currency].total += getTotal(doc) || 0;
   }
 
   // Find the most common currency
   let primaryCurrency = 'EUR';
   let maxCount = 0;
-  for (const [currency, data] of Object.entries(currencyCounts)) {
-    if (data.count > maxCount) {
-      maxCount = data.count;
+  for (const [currency, currencyData] of Object.entries(currencyCounts)) {
+    if (currencyData.count > maxCount) {
+      maxCount = currencyData.count;
       primaryCurrency = currency;
     }
   }
@@ -175,8 +175,9 @@ function calculateStats(documents: Document[]): DailySummaryStats {
   // Find top vendor
   const vendorCounts: Record<string, number> = {};
   for (const doc of documents) {
-    if (doc.vendorName) {
-      vendorCounts[doc.vendorName] = (vendorCounts[doc.vendorName] || 0) + 1;
+    const vendorName = getVendorName(doc);
+    if (vendorName) {
+      vendorCounts[vendorName] = (vendorCounts[vendorName] || 0) + 1;
     }
   }
 
@@ -192,7 +193,7 @@ function calculateStats(documents: Document[]): DailySummaryStats {
   // Category breakdown
   const categoryBreakdown: Record<string, number> = {};
   for (const doc of documents) {
-    const category = doc.categoryName || 'Uncategorized';
+    const category = getCategoryName(doc) || 'Uncategorized';
     categoryBreakdown[category] = (categoryBreakdown[category] || 0) + 1;
   }
 

@@ -4,6 +4,7 @@
  * Helper functions for building Slack Block Kit messages.
  */
 
+import type { Document, Company, Export } from '@invoiceleaf/integration-sdk';
 import type {
   SlackBlock,
   HeaderBlock,
@@ -15,11 +16,21 @@ import type {
   TextElement,
   PlainTextElement,
   MrkdwnElement,
-  Document,
-  Company,
-  Export,
   DailySummaryStats,
   SlackAttachment,
+} from '../types.js';
+import {
+  getVendorName,
+  getTotal,
+  getNetTotal,
+  getVatTotal,
+  getCurrencyCode,
+  getInvoiceNumber,
+  getInvoiceDate,
+  getCategoryName,
+  getCreatedAt,
+  getUpdatedAt,
+  getDisplayStatus,
 } from '../types.js';
 import { formatCurrency, formatDate, formatRelativeTime } from '../utils/formatters.js';
 
@@ -141,8 +152,8 @@ export function buildDocumentCreatedBlocks(
   const blocks: SlackBlock[] = [
     header('New Invoice Uploaded'),
     sectionWithFields([
-      mrkdwn(`*Vendor*\n${document.vendorName || 'Processing...'}`),
-      mrkdwn(`*Status*\n${formatStatus(document.status)}`),
+      mrkdwn(`*Vendor*\n${getVendorName(document) || 'Processing...'}`),
+      mrkdwn(`*Status*\n${formatStatus(getDisplayStatus(document))}`),
     ]),
   ];
 
@@ -151,7 +162,7 @@ export function buildDocumentCreatedBlocks(
   }
 
   blocks.push(
-    context(mrkdwn(`Uploaded ${formatRelativeTime(document.createdAt)}`)),
+    context(mrkdwn(`Uploaded ${formatRelativeTime(getCreatedAt(document))}`)),
     actions(button('View Document', 'view_document', { url: invoiceUrl }))
   );
 
@@ -167,24 +178,27 @@ export function buildDocumentProcessedBlocks(
   spaceId: string
 ): SlackBlock[] {
   const invoiceUrl = `${APP_BASE_URL}/spaces/${spaceId}/documents/${document.id}`;
+  const currencyCode = getCurrencyCode(document);
 
   const blocks: SlackBlock[] = [
     header('Invoice Processed'),
     sectionWithFields([
-      mrkdwn(`*Vendor*\n${document.vendorName || 'Unknown'}`),
-      mrkdwn(`*Amount*\n${formatCurrency(document.total, document.currency)}`),
-      mrkdwn(`*Invoice #*\n${document.documentNumber || 'N/A'}`),
-      mrkdwn(`*Date*\n${formatDate(document.documentDate)}`),
+      mrkdwn(`*Vendor*\n${getVendorName(document) || 'Unknown'}`),
+      mrkdwn(`*Amount*\n${formatCurrency(getTotal(document), currencyCode)}`),
+      mrkdwn(`*Invoice #*\n${getInvoiceNumber(document) || 'N/A'}`),
+      mrkdwn(`*Date*\n${formatDate(getInvoiceDate(document))}`),
     ]),
   ];
 
   // Add net/VAT breakdown if available
-  if (document.netTotal !== undefined && document.vatTotal !== undefined) {
+  const netTotal = getNetTotal(document);
+  const vatTotal = getVatTotal(document);
+  if (netTotal !== undefined && vatTotal !== undefined) {
     blocks.push(
       context(
         mrkdwn(
-          `Net: ${formatCurrency(document.netTotal, document.currency)} | ` +
-            `VAT: ${formatCurrency(document.vatTotal, document.currency)}`
+          `Net: ${formatCurrency(netTotal, currencyCode)} | ` +
+            `VAT: ${formatCurrency(vatTotal, currencyCode)}`
         )
       )
     );
@@ -196,8 +210,9 @@ export function buildDocumentProcessedBlocks(
   }
 
   // Add category if set
-  if (document.categoryName) {
-    blocks.push(context(mrkdwn(`Category: ${document.categoryName}`)));
+  const categoryName = getCategoryName(document);
+  if (categoryName) {
+    blocks.push(context(mrkdwn(`Category: ${categoryName}`)));
   }
 
   // Add due date warning if approaching
@@ -234,10 +249,10 @@ export function buildDocumentUpdatedBlocks(
   const blocks: SlackBlock[] = [
     header('Invoice Updated'),
     sectionWithFields([
-      mrkdwn(`*Vendor*\n${document.vendorName || 'Unknown'}`),
-      mrkdwn(`*Amount*\n${formatCurrency(document.total, document.currency)}`),
-      mrkdwn(`*Invoice #*\n${document.documentNumber || 'N/A'}`),
-      mrkdwn(`*Status*\n${formatStatus(document.status)}`),
+      mrkdwn(`*Vendor*\n${getVendorName(document) || 'Unknown'}`),
+      mrkdwn(`*Amount*\n${formatCurrency(getTotal(document), getCurrencyCode(document))}`),
+      mrkdwn(`*Invoice #*\n${getInvoiceNumber(document) || 'N/A'}`),
+      mrkdwn(`*Status*\n${formatStatus(getDisplayStatus(document))}`),
     ]),
   ];
 
@@ -246,7 +261,7 @@ export function buildDocumentUpdatedBlocks(
   }
 
   blocks.push(
-    context(mrkdwn(`Updated ${formatRelativeTime(document.updatedAt)}`)),
+    context(mrkdwn(`Updated ${formatRelativeTime(getUpdatedAt(document))}`)),
     actions(button('View Invoice', 'view_invoice', { url: invoiceUrl }))
   );
 

@@ -4,17 +4,16 @@
  * Sends a Slack notification when a new document is uploaded.
  */
 
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, Company } from '@invoiceleaf/integration-sdk';
 import type {
   DocumentEventInput,
   DocumentNotificationResult,
   SlackIntegrationConfig,
-  Company,
 } from '../types.js';
+import { getVendorName, getCompanyId } from '../types.js';
 import { SlackClient } from '../slack/client.js';
 import { buildDocumentCreatedBlocks, statusAttachment } from '../slack/blocks.js';
 import { shouldNotify, isNotificationEnabled } from '../utils/filters.js';
-import { formatCurrency } from '../utils/formatters.js';
 
 /**
  * Handles document.created events.
@@ -68,15 +67,18 @@ export const handleDocumentCreated: IntegrationHandler<
     };
   }
 
+  const vendorName = getVendorName(document);
+  const companyId = getCompanyId(document);
+
   // Fetch company for context (optional)
   let company: Company | null = null;
-  if (document.companyId) {
+  if (companyId) {
     try {
-      const companies = await data.listCompanies({ ids: [document.companyId] });
+      const companies = await data.listCompanies({ ids: [companyId] });
       company = companies.items[0] || null;
     } catch (error) {
       logger.warn('Failed to fetch company', {
-        companyId: document.companyId,
+        companyId,
         error: (error as Error).message,
       });
     }
@@ -84,7 +86,7 @@ export const handleDocumentCreated: IntegrationHandler<
 
   // Build Slack message
   const blocks = buildDocumentCreatedBlocks(document, company, spaceId);
-  const fallbackText = `New invoice uploaded${document.vendorName ? ` from ${document.vendorName}` : ''}`;
+  const fallbackText = `New invoice uploaded${vendorName ? ` from ${vendorName}` : ''}`;
 
   // Send to Slack
   try {
@@ -100,13 +102,13 @@ export const handleDocumentCreated: IntegrationHandler<
 
     logger.info('Document created notification sent', {
       documentId: document.id,
-      vendorName: document.vendorName,
+      vendorName,
     });
 
     return {
       success: true,
       documentId: document.id,
-      vendorName: document.vendorName || undefined,
+      vendorName: vendorName || undefined,
     };
   } catch (error) {
     logger.error('Failed to send Slack notification', {

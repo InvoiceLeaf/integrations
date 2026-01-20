@@ -4,7 +4,7 @@
  * Sends a Slack notification when an export is ready for download.
  */
 
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, Export } from '@invoiceleaf/integration-sdk';
 import type {
   ExportCompletedInput,
   HandlerResult,
@@ -49,34 +49,30 @@ export const handleExportCompleted: IntegrationHandler<
     };
   }
 
-  // Fetch export details (the input may have basic info, but we want full details)
-  let exportData;
+  // Try to fetch export details from the API, fall back to input data
+  let exportData: Export;
   try {
-    // Try to get export from context data API
-    // Note: This assumes the SDK provides getExport or similar method
-    exportData = {
-      id: exportId,
-      spaceId,
-      format: format || 'unknown',
-      status: 'COMPLETED' as const,
-      documentCount: documentCount || 0,
-      downloadUrl: undefined as string | undefined, // Will be populated if available
-      createdAt: new Date().toISOString(),
-      completedAt: new Date().toISOString(),
-    };
-
-    // If data API has createExport return with downloadUrl, try to fetch it
-    // This is a simplified version - in reality you might call a specific endpoint
+    exportData = await data.getExport(exportId);
   } catch (error) {
     logger.warn('Could not fetch export details, using input data', {
       exportId,
       error: (error as Error).message,
     });
+    // Create a minimal export object from input
+    exportData = {
+      id: exportId,
+      spaceId,
+      format: format || 'unknown',
+      status: 'COMPLETED',
+      documentCount: documentCount || 0,
+      createdAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+    };
   }
 
   // Build Slack message
   const blocks = buildExportCompletedBlocks(exportData, spaceId);
-  const fallbackText = `Export ready: ${exportData.documentCount} documents in ${exportData.format.toUpperCase()} format`;
+  const fallbackText = `Export ready: ${exportData.documentCount || 0} documents in ${exportData.format.toUpperCase()} format`;
 
   // Send to Slack
   try {
