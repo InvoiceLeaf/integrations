@@ -1,6 +1,9 @@
-import { defineHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
 
-export const buildWeeklySummaryMessage = defineHandler(async (input: unknown, context) => {
+export const buildWeeklySummaryMessage = async (
+  input: unknown,
+  context: IntegrationContext
+) => {
   context.logger.info('Building Telegram payload for weekly summary', { input });
   return {
     success: true,
@@ -8,4 +11,4 @@ export const buildWeeklySummaryMessage = defineHandler(async (input: unknown, co
     template: 'weekly_summary',
     payload: input,
   };
-});
+};

@@ -1,6 +1,9 @@
-import { defineHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
 
-export const buildDocumentProcessedMessage = defineHandler(async (input: unknown, context) => {
+export const buildDocumentProcessedMessage = async (
+  input: unknown,
+  context: IntegrationContext
+) => {
   context.logger.info('Building Telegram payload for document.processed', { input });
   return {
     success: true,
@@ -8,4 +11,4 @@ export const buildDocumentProcessedMessage = defineHandler(async (input: unknown
     template: 'document_processed',
     payload: input,
   };
-});
+};

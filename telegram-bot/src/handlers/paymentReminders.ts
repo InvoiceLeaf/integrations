@@ -1,6 +1,9 @@
-import { defineHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
 
-export const buildPaymentReminderMessage = defineHandler(async (input: unknown, context) => {
+export const buildPaymentReminderMessage = async (
+  input: unknown,
+  context: IntegrationContext
+) => {
   context.logger.info('Building Telegram payload for payment reminders', { input });
   return {
     success: true,
@@ -8,4 +11,4 @@ export const buildPaymentReminderMessage = defineHandler(async (input: unknown, 
     template: 'payment_reminder',
     payload: input,
   };
-});
+};

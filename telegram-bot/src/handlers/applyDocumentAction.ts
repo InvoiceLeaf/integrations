@@ -1,4 +1,4 @@
-import { defineHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
 
 interface DocumentActionInput {
   operation: string;
@@ -6,7 +6,10 @@ interface DocumentActionInput {
   value?: unknown;
 }
 
-export const applyDocumentAction = defineHandler<DocumentActionInput>(async (input, context) => {
+export const applyDocumentAction = async (
+  input: DocumentActionInput,
+  context: IntegrationContext
+) => {
   context.logger.info('Applying Telegram callback document action', {
     operation: input.operation,
     documentId: input.documentId,
@@ -20,4 +23,4 @@ export const applyDocumentAction = defineHandler<DocumentActionInput>(async (inp
     documentId: input.documentId,
     value: input.value,
   };
-});
+};

@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-telegram-bot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Telegram bot integration payload builders for InvoiceLeaf",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,10 +22,10 @@
   "author": "InvoiceLeaf <support@invoiceleaf.com>",
   "license": "MIT",
   "peerDependencies": {
-    "@invoiceleaf/integration-sdk": "^1.0.2"
+    "@invoiceleaf/integration-sdk": "^1.1.0"
   },
   "devDependencies": {
-    "@invoiceleaf/integration-sdk": "^1.0.2",
+    "@invoiceleaf/integration-sdk": "^1.1.0",
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0"
   },
