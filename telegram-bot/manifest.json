@@ -2,7 +2,7 @@
   "id": "telegram-bot",
   "name": "Telegram Bot",
   "description": "Builds Telegram notification payloads and callback action outputs for InvoiceLeaf.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
