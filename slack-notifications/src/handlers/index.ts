@@ -8,5 +8,6 @@ export { handleDocumentCreated } from './documentCreated.js';
 export { handleDocumentProcessed } from './documentProcessed.js';
 export { handleDocumentUpdated } from './documentUpdated.js';
 export { handleExportCompleted } from './exportCompleted.js';
+export { handleReminderTriggered } from './reminderTriggered.js';
 export { handleDailySummary } from './dailySummary.js';
 export { sendTestMessage } from './testConnection.js';

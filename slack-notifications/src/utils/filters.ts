@@ -206,6 +206,7 @@ export function isNotificationEnabled(
     | 'notifyOnDocumentProcessed'
     | 'notifyOnDocumentUpdated'
     | 'notifyOnExportCompleted'
+    | 'notifyOnReminderTriggered'
     | 'enableDailySummary'
   >,
   config: Partial<SlackIntegrationConfig>
@@ -218,6 +219,7 @@ export function isNotificationEnabled(
     notifyOnDocumentProcessed: true,
     notifyOnDocumentUpdated: false,
     notifyOnExportCompleted: true,
+    notifyOnReminderTriggered: true,
     enableDailySummary: false,
   };
 

@@ -8,6 +8,7 @@ Real-time Slack notifications for InvoiceLeaf invoice events.
 - **Document Processed** - See extracted invoice details (vendor, amount, invoice #)
 - **Document Updated** - Know when invoices are modified
 - **Export Ready** - Download exports without waiting
+- **Reminder Triggered** - Deliver scheduled reminder messages to Slack
 - **Daily Summary** - Morning overview of yesterday's activity
 
 ## Installation
@@ -51,6 +52,7 @@ npm install @invoiceleaf/integration-slack-notifications
 | `notifyOnDocumentProcessed` | boolean | true | Notify on processing complete |
 | `notifyOnDocumentUpdated` | boolean | false | Notify on updates |
 | `notifyOnExportCompleted` | boolean | true | Notify when exports ready |
+| `notifyOnReminderTriggered` | boolean | true | Notify when reminders trigger |
 | `enableDailySummary` | boolean | false | Enable daily summary at 9 AM |
 | `minimumAmount` | number | 0 | Minimum amount filter (0 = all) |
 | `minimumAmountCurrency` | string | EUR | Currency for minimum amount |
@@ -125,6 +127,7 @@ src/
 │   ├── documentProcessed.ts
 │   ├── documentUpdated.ts
 │   ├── exportCompleted.ts
+│   ├── reminderTriggered.ts
 │   ├── dailySummary.ts
 │   └── testConnection.ts
 ├── slack/

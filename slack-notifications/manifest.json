@@ -2,7 +2,7 @@
   "id": "slack-notifications",
   "name": "Slack Notifications",
   "description": "Get real-time Slack notifications when invoices are uploaded, processed, or exported. Stay informed about your invoice activity without leaving Slack.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -48,6 +48,15 @@
       "description": "Triggered when an export is ready for download",
       "events": ["export.completed"],
       "handler": "handleExportCompleted",
+      "configurable": true
+    },
+    {
+      "id": "on-reminder-triggered",
+      "type": "event",
+      "name": "Reminder Triggered",
+      "description": "Triggered when a reminder fires and message text is ready",
+      "events": ["reminder.triggered"],
+      "handler": "handleReminderTriggered",
       "configurable": true
     },
     {
@@ -120,6 +129,12 @@
         "description": "Send a notification when an export is ready for download",
         "default": true
       },
+      "notifyOnReminderTriggered": {
+        "type": "boolean",
+        "title": "Notify when reminders trigger",
+        "description": "Send a notification when a reminder fires",
+        "default": true
+      },
       "enableDailySummary": {
         "type": "boolean",
         "title": "Enable daily summary",
@@ -178,6 +193,7 @@
           "notifyOnDocumentProcessed",
           "notifyOnDocumentUpdated",
           "notifyOnExportCompleted",
+          "notifyOnReminderTriggered",
           "enableDailySummary"
         ]
       },

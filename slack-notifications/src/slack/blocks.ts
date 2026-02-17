@@ -17,6 +17,7 @@ import type {
   PlainTextElement,
   MrkdwnElement,
   DailySummaryStats,
+  ReminderTriggeredInput,
   SlackAttachment,
 } from '../types.js';
 import {
@@ -32,7 +33,12 @@ import {
   getUpdatedAt,
   getDisplayStatus,
 } from '../types.js';
-import { formatCurrency, formatDate, formatRelativeTime } from '../utils/formatters.js';
+import {
+  escapeSlackMrkdwn,
+  formatCurrency,
+  formatDate,
+  formatRelativeTime,
+} from '../utils/formatters.js';
 
 // ============================================================================
 // Base URL for InvoiceLeaf app links
@@ -298,6 +304,61 @@ export function buildExportCompletedBlocks(exportData: Export, spaceId: string):
 
   blocks.push(actions(...actionButtons));
 
+  return blocks;
+}
+
+// ============================================================================
+// Reminder Notification Blocks
+// ============================================================================
+
+/**
+ * Builds blocks for reminder triggered notification.
+ */
+export function buildReminderTriggeredBlocks(input: ReminderTriggeredInput): SlackBlock[] {
+  const messageText = input.messageText?.trim() || input.title?.trim() || 'Reminder triggered.';
+  const remindersUrl = `${APP_BASE_URL}/settings`;
+
+  const blocks: SlackBlock[] = [
+    header('Reminder Triggered'),
+    section(mrkdwn(escapeSlackMrkdwn(messageText))),
+  ];
+
+  const fields: TextElement[] = [];
+
+  if (input.title?.trim()) {
+    fields.push(mrkdwn(`*Title*\n${escapeSlackMrkdwn(input.title.trim())}`));
+  }
+
+  if (typeof input.scheduledFor === 'number' && Number.isFinite(input.scheduledFor)) {
+    fields.push(
+      mrkdwn(
+        `*Scheduled For*\n${formatDate(new Date(input.scheduledFor).toISOString(), {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })}`
+      )
+    );
+  }
+
+  if (fields.length > 0) {
+    blocks.push(sectionWithFields(fields));
+  }
+
+  if (input.reminderId || input.occurrenceId) {
+    const ids: string[] = [];
+    if (input.reminderId) {
+      ids.push(`Reminder: \`${input.reminderId}\``);
+    }
+    if (input.occurrenceId) {
+      ids.push(`Occurrence: \`${input.occurrenceId}\``);
+    }
+    blocks.push(context(mrkdwn(ids.join(' | '))));
+  }
+
+  blocks.push(actions(button('Open Settings', 'open_settings', { url: remindersUrl, style: 'primary' })));
   return blocks;
 }
 

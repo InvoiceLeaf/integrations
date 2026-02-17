@@ -19,6 +19,7 @@ export {
   handleDocumentProcessed,
   handleDocumentUpdated,
   handleExportCompleted,
+  handleReminderTriggered,
   handleDailySummary,
   sendTestMessage,
 } from './handlers/index.js';
@@ -42,4 +43,3 @@ export type {
 // ============================================================================
 
 export { SlackClient, SlackApiError, SlackWebhookValidationError } from './slack/index.js';
-

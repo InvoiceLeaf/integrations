@@ -29,6 +29,7 @@ export interface SlackIntegrationConfig {
   notifyOnDocumentProcessed: boolean;
   notifyOnDocumentUpdated: boolean;
   notifyOnExportCompleted: boolean;
+  notifyOnReminderTriggered: boolean;
   enableDailySummary: boolean;
 
   // Filters
@@ -54,6 +55,7 @@ export const DEFAULT_CONFIG: SlackIntegrationConfig = {
   notifyOnDocumentProcessed: true,
   notifyOnDocumentUpdated: false,
   notifyOnExportCompleted: true,
+  notifyOnReminderTriggered: true,
   enableDailySummary: false,
   minimumAmount: 0,
   minimumAmountCurrency: 'EUR',
@@ -309,6 +311,26 @@ export interface DailySummaryInput {
   scheduledAt: string;
 }
 
+/**
+ * Input for reminder triggered event handler.
+ * Supports both direct payload and nested runtime payload shapes.
+ */
+export interface ReminderTriggeredInput {
+  reminderId?: string;
+  occurrenceId?: string;
+  spaceId?: string;
+  userId?: string;
+  title?: string;
+  scheduledFor?: number;
+  triggeredAt?: number;
+  messageText?: string;
+  metadata?: {
+    scheduleType?: 'one_time' | 'rrule' | string;
+    aiMode?: 'off' | 'light_rewrite' | 'tool_enabled' | string;
+  };
+  payload?: Record<string, unknown>;
+}
+
 // ============================================================================
 // Handler Result Types
 // ============================================================================
@@ -337,6 +359,15 @@ export interface DocumentNotificationResult extends HandlerResult {
  */
 export interface DailySummaryResult extends HandlerResult {
   stats?: DailySummaryStats;
+}
+
+/**
+ * Result for reminder triggered handler.
+ */
+export interface ReminderNotificationResult extends HandlerResult {
+  reminderId?: string;
+  occurrenceId?: string;
+  messageText?: string;
 }
 
 /**
