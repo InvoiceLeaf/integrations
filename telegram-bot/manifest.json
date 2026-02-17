@@ -33,6 +33,15 @@
       "configurable": true
     },
     {
+      "id": "on-reminder-triggered",
+      "type": "event",
+      "name": "Reminder Triggered",
+      "description": "Triggered when a reminder fires and message text is ready",
+      "events": ["reminder.triggered"],
+      "handler": "buildReminderTriggeredMessage",
+      "configurable": true
+    },
+    {
       "id": "payment-reminder",
       "type": "schedule",
       "name": "Payment Reminder",

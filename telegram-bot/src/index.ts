@@ -5,6 +5,7 @@
 export {
   buildDocumentProcessedMessage,
   buildExportCompletedMessage,
+  buildReminderTriggeredMessage,
   buildPaymentReminderMessage,
   buildWeeklySummaryMessage,
   sendTestTelegramMessage,
