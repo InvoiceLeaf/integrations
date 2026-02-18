@@ -30,7 +30,62 @@
       "name": "Send Email",
       "description": "Send an email through SMTP",
       "handler": "sendEmail",
-      "icon": "send"
+      "icon": "send",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "oneOf": [
+              { "type": "string", "format": "email" },
+              {
+                "type": "array",
+                "items": { "type": "string", "format": "email" },
+                "minItems": 1
+              }
+            ]
+          },
+          "cc": {
+            "oneOf": [
+              { "type": "string", "format": "email" },
+              {
+                "type": "array",
+                "items": { "type": "string", "format": "email" }
+              }
+            ]
+          },
+          "bcc": {
+            "oneOf": [
+              { "type": "string", "format": "email" },
+              {
+                "type": "array",
+                "items": { "type": "string", "format": "email" }
+              }
+            ]
+          },
+          "replyTo": { "type": "string", "format": "email" },
+          "subject": { "type": "string", "minLength": 1 },
+          "text": { "type": "string" },
+          "html": { "type": "string" },
+          "documentId": { "type": "string" },
+          "documentIds": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fileName": { "type": "string" },
+                "contentType": { "type": "string" },
+                "contentBase64": { "type": "string" }
+              },
+              "required": ["fileName", "contentBase64"]
+            }
+          }
+        },
+        "required": ["to", "subject"]
+      }
     },
     {
       "id": "test-connection",

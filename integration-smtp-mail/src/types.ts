@@ -38,6 +38,8 @@ export interface SendEmailInput {
   html?: string;
   replyTo?: string;
   attachments?: SendEmailAttachmentInput[];
+  documentId?: string;
+  documentIds?: string[];
 }
 
 export interface HandlerResult {

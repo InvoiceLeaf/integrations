@@ -14,6 +14,23 @@ export const sendEmail: IntegrationHandler<SendEmailInput, HandlerResult, SmtpMa
       };
     }
 
+    const combinedAttachments = [...(input.attachments || [])];
+    const requestedDocumentIds = Array.from(
+      new Set([
+        ...(input.documentId ? [input.documentId] : []),
+        ...((input.documentIds || []).filter(Boolean)),
+      ])
+    );
+
+    for (const documentId of requestedDocumentIds) {
+      const file = await context.data.getDocumentFile(documentId);
+      combinedAttachments.push({
+        fileName: file.fileName || `document-${documentId}.bin`,
+        contentType: file.contentType,
+        contentBase64: file.contentBase64,
+      });
+    }
+
     const result = await context.email.sendSmtpEmail({
       smtpHost: context.config.smtpHost,
       smtpPort: context.config.smtpPort,
@@ -28,7 +45,7 @@ export const sendEmail: IntegrationHandler<SendEmailInput, HandlerResult, SmtpMa
       subject: input.subject,
       text: input.text,
       html: input.html,
-      attachments: input.attachments,
+      attachments: combinedAttachments.length > 0 ? combinedAttachments : undefined,
     });
 
     context.logger.info('SMTP sendEmail succeeded', { messageId: result.messageId });
