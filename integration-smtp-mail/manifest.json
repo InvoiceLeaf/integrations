@@ -1,0 +1,182 @@
+{
+  "id": "integration-smtp-mail",
+  "name": "SMTP Mail",
+  "description": "Send email through SMTP and crawl IMAP inboxes for PDF attachments to import into InvoiceLeaf.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "mail",
+  "category": "communication",
+  "tags": ["smtp", "imap", "email", "inbox", "attachments"],
+  "dataAccess": ["documents"],
+  "externalAuth": [],
+  "triggers": [
+    {
+      "id": "crawl-email-pdf-attachments",
+      "type": "schedule",
+      "name": "Crawl Email PDF Attachments",
+      "description": "Checks IMAP mailbox for PDF attachments and imports them into InvoiceLeaf",
+      "schedule": "*/15 * * * *",
+      "handler": "crawlPdfAttachments",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "send-email",
+      "name": "Send Email",
+      "description": "Send an email through SMTP",
+      "handler": "sendEmail",
+      "icon": "send"
+    },
+    {
+      "id": "test-connection",
+      "name": "Test SMTP/IMAP Connection",
+      "description": "Verify SMTP and IMAP credentials",
+      "handler": "testConnection",
+      "icon": "check"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "smtpHost": {
+        "type": "string",
+        "title": "SMTP Host",
+        "description": "SMTP server hostname (for example, smtp.office365.com)"
+      },
+      "smtpPort": {
+        "type": "number",
+        "title": "SMTP Port",
+        "default": 587,
+        "minimum": 1,
+        "maximum": 65535
+      },
+      "smtpSecure": {
+        "type": "boolean",
+        "title": "SMTP Secure (TLS)",
+        "description": "Use secure SMTP transport (usually true for port 465)",
+        "default": false
+      },
+      "smtpUsername": {
+        "type": "string",
+        "title": "SMTP Username"
+      },
+      "smtpPassword": {
+        "type": "string",
+        "title": "SMTP Password",
+        "format": "password"
+      },
+      "fromAddress": {
+        "type": "string",
+        "title": "From Address",
+        "format": "email"
+      },
+      "imapHost": {
+        "type": "string",
+        "title": "IMAP Host",
+        "description": "IMAP server hostname (for example, outlook.office365.com)"
+      },
+      "imapPort": {
+        "type": "number",
+        "title": "IMAP Port",
+        "default": 993,
+        "minimum": 1,
+        "maximum": 65535
+      },
+      "imapSecure": {
+        "type": "boolean",
+        "title": "IMAP Secure (TLS)",
+        "default": true
+      },
+      "imapUsername": {
+        "type": "string",
+        "title": "IMAP Username"
+      },
+      "imapPassword": {
+        "type": "string",
+        "title": "IMAP Password",
+        "format": "password"
+      },
+      "imapFolder": {
+        "type": "string",
+        "title": "IMAP Folder",
+        "default": "INBOX"
+      },
+      "processedFolder": {
+        "type": "string",
+        "title": "Processed Folder",
+        "description": "Optional destination folder after successful import"
+      },
+      "searchFilter": {
+        "type": "string",
+        "title": "Search Filter",
+        "description": "Supported values: UNSEEN, SEEN, ALL",
+        "default": "UNSEEN"
+      },
+      "maxMessagesPerRun": {
+        "type": "number",
+        "title": "Max Messages Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 500
+      },
+      "maxAttachmentsPerMessage": {
+        "type": "number",
+        "title": "Max Attachments Per Message",
+        "default": 10,
+        "minimum": 1,
+        "maximum": 50
+      },
+      "stateKeyPrefix": {
+        "type": "string",
+        "title": "State Key Prefix",
+        "default": "smtp-mail"
+      },
+      "dedupeTtlSeconds": {
+        "type": "number",
+        "title": "Dedupe TTL (seconds)",
+        "default": 7776000,
+        "minimum": 3600
+      },
+      "importSource": {
+        "type": "string",
+        "title": "Import Source",
+        "default": "smtp-mail"
+      }
+    },
+    "required": [
+      "smtpHost",
+      "smtpPort",
+      "smtpUsername",
+      "smtpPassword",
+      "fromAddress",
+      "imapHost",
+      "imapPort",
+      "imapUsername",
+      "imapPassword"
+    ]
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "SMTP",
+        "description": "Configure outbound email delivery",
+        "fields": ["smtpHost", "smtpPort", "smtpSecure", "smtpUsername", "smtpPassword", "fromAddress"]
+      },
+      {
+        "title": "IMAP",
+        "description": "Configure inbox crawling",
+        "fields": ["imapHost", "imapPort", "imapSecure", "imapUsername", "imapPassword", "imapFolder", "processedFolder", "searchFilter"]
+      },
+      {
+        "title": "Crawler Limits",
+        "description": "Control per-run workload and dedupe",
+        "fields": ["maxMessagesPerRun", "maxAttachmentsPerMessage", "stateKeyPrefix", "dedupeTtlSeconds", "importSource"]
+      }
+    ]
+  }
+}

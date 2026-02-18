@@ -8,6 +8,7 @@ This directory contains npm packages for integrating with InvoiceLeaf.
 |---------|-------------|
 | [slack-notifications](./slack-notifications) | Slack webhook notifications for invoice events |
 | [telegram-bot](./telegram-bot) | Telegram bot payload builders and callback action outputs |
+| [integration-smtp-mail](./integration-smtp-mail) | SMTP send + IMAP PDF crawl and import |
 
 ## Development
 
