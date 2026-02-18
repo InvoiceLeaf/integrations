@@ -286,7 +286,8 @@ export interface AttachmentField {
  */
 export interface DocumentEventInput {
   documentId: string;
-  spaceId: string;
+  document: Document;
+  spaceId?: string;
   userId?: string;
   timestamp?: string;
 }
@@ -296,10 +297,11 @@ export interface DocumentEventInput {
  */
 export interface ExportCompletedInput {
   exportId: string;
-  spaceId: string;
+  export: Export;
+  spaceId?: string;
   userId?: string;
-  documentCount: number;
-  format: string;
+  documentCount?: number;
+  format?: string;
   timestamp?: string;
 }
 
@@ -401,7 +403,7 @@ export type {
 // Document Helper Functions
 // ============================================================================
 
-import type { Document } from '@invoiceleaf/integration-sdk';
+import type { Document, Export } from '@invoiceleaf/integration-sdk';
 
 /**
  * Gets the vendor/supplier name from a document.

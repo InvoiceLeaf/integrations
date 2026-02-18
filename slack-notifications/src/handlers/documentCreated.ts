@@ -28,7 +28,8 @@ export const handleDocumentCreated: IntegrationHandler<
   input: DocumentEventInput,
   ctx: IntegrationContext<SlackIntegrationConfig>
 ): Promise<DocumentNotificationResult> => {
-  const { documentId, spaceId } = input;
+  const { documentId } = input;
+  const spaceId = input.spaceId || ctx.spaceId;
   const { config, logger, data } = ctx;
 
   // Check if this notification type is enabled

@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-slack-notifications",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Slack notifications integration for InvoiceLeaf - receive real-time updates when invoices are processed",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,10 +25,10 @@
   "author": "InvoiceLeaf <support@invoiceleaf.com>",
   "license": "MIT",
   "peerDependencies": {
-    "@invoiceleaf/integration-sdk": "^1.2.0"
+    "@invoiceleaf/integration-sdk": "^1.6.0"
   },
   "devDependencies": {
-    "@invoiceleaf/integration-sdk": "^1.2.0",
+    "@invoiceleaf/integration-sdk": "^1.6.0",
     "@types/node": "^22.10.0",
     "eslint": "^9.17.0",
     "typescript": "^5.7.0",

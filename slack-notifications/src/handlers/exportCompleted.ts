@@ -36,7 +36,10 @@ export const handleExportCompleted: IntegrationHandler<
   input: ExportCompletedInput,
   ctx: IntegrationContext<SlackIntegrationConfig>
 ): Promise<ExportCompletedResult> => {
-  const { exportId, spaceId, documentCount, format } = input;
+  const { exportId } = input;
+  const spaceId = input.spaceId || ctx.spaceId;
+  const documentCount = input.documentCount;
+  const format = input.format;
   const { config, logger, data } = ctx;
 
   // Check if this notification type is enabled
