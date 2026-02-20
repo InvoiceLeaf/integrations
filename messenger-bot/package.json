@@ -1,0 +1,41 @@
+{
+  "name": "@invoiceleaf/integration-messenger-bot",
+  "version": "1.0.0",
+  "description": "Facebook Messenger bot integration payload builders for InvoiceLeaf",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "invoiceleaf",
+    "integration",
+    "messenger",
+    "facebook",
+    "bot",
+    "notifications"
+  ],
+  "author": "InvoiceLeaf <support@invoiceleaf.com>",
+  "license": "MIT",
+  "peerDependencies": {
+    "@invoiceleaf/integration-sdk": "^1.2.0"
+  },
+  "devDependencies": {
+    "@invoiceleaf/integration-sdk": "^1.2.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist",
+    "manifest.json",
+    "README.md"
+  ]
+}

@@ -1,0 +1,154 @@
+{
+  "id": "messenger-bot",
+  "name": "Messenger Bot",
+  "description": "Builds Facebook Messenger notification payloads for InvoiceLeaf.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "messenger",
+  "category": "communication",
+  "tags": ["messenger", "facebook", "notifications", "bot", "messaging"],
+  "dataAccess": ["documents", "companies", "categories", "spaces", "exports"],
+  "externalAuth": [],
+  "triggers": [
+    {
+      "id": "on-document-processed",
+      "type": "event",
+      "name": "Document Processed",
+      "description": "Triggered when invoice processing completes",
+      "events": ["document.processed"],
+      "handler": "buildDocumentProcessedMessage",
+      "configurable": true
+    },
+    {
+      "id": "on-export-completed",
+      "type": "event",
+      "name": "Export Ready",
+      "description": "Triggered when an export is ready",
+      "events": ["export.completed"],
+      "handler": "buildExportCompletedMessage",
+      "configurable": true
+    },
+    {
+      "id": "on-reminder-triggered",
+      "type": "event",
+      "name": "Reminder Triggered",
+      "description": "Triggered when a reminder fires and message text is ready",
+      "events": ["reminder.triggered"],
+      "handler": "buildReminderTriggeredMessage",
+      "configurable": true
+    },
+    {
+      "id": "payment-reminder",
+      "type": "schedule",
+      "name": "Payment Reminder",
+      "description": "Weekday reminder for due and overdue invoices",
+      "schedule": "0 9 * * 1-5",
+      "handler": "buildPaymentReminderMessage",
+      "configurable": true
+    },
+    {
+      "id": "weekly-summary",
+      "type": "schedule",
+      "name": "Weekly Summary",
+      "description": "Weekly invoice summary",
+      "schedule": "0 9 * * 1",
+      "handler": "buildWeeklySummaryMessage",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-messenger",
+      "name": "Send Test Message",
+      "description": "Builds a test payload for Messenger transport",
+      "handler": "sendTestMessengerMessage"
+    },
+    {
+      "id": "apply-document-action",
+      "name": "Apply Document Action",
+      "description": "Internal action payload for postback operations",
+      "handler": "applyDocumentAction",
+      "internal": true
+    }
+  ],
+  "invocations": [
+    {
+      "id": "messenger-postback-view",
+      "source": "messenger.postback",
+      "operation": "view_document",
+      "actionId": "apply-document-action",
+      "requiresLinkedUser": true
+    },
+    {
+      "id": "messenger-postback-mark-paid",
+      "source": "messenger.postback",
+      "operation": "mark_paid",
+      "actionId": "apply-document-action",
+      "requiresLinkedUser": true
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "chatId": {
+        "type": "string",
+        "title": "Messenger Chat ID (PSID)"
+      },
+      "documentProcessed": {
+        "type": "boolean",
+        "title": "Notify when processing completes",
+        "default": true
+      },
+      "exportCompleted": {
+        "type": "boolean",
+        "title": "Notify when exports are ready",
+        "default": true
+      },
+      "paymentReminders": {
+        "type": "boolean",
+        "title": "Enable payment reminders",
+        "default": true
+      },
+      "weeklySummary": {
+        "type": "boolean",
+        "title": "Enable weekly summary",
+        "default": true
+      },
+      "spendingAlerts": {
+        "type": "boolean",
+        "title": "Enable spending alerts",
+        "default": true
+      },
+      "spendingAlertThreshold": {
+        "type": "number",
+        "title": "Spending alert threshold",
+        "minimum": 0,
+        "default": 1000
+      }
+    },
+    "required": ["chatId"]
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Connection",
+        "fields": ["chatId"]
+      },
+      {
+        "title": "Notifications",
+        "fields": [
+          "documentProcessed",
+          "exportCompleted",
+          "paymentReminders",
+          "weeklySummary",
+          "spendingAlerts",
+          "spendingAlertThreshold"
+        ]
+      }
+    ]
+  }
+}

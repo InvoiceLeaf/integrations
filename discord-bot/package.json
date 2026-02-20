@@ -1,0 +1,29 @@
+{
+  "name": "@invoiceleaf/integration-discord-bot",
+  "version": "1.0.0",
+  "description": "Discord Bot integration for InvoiceLeaf",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/"
+  },
+  "peerDependencies": {
+    "@invoiceleaf/integration-sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@invoiceleaf/integration-sdk": "^1.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist",
+    "manifest.json"
+  ]
+}
