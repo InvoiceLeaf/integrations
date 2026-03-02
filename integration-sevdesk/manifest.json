@@ -1,0 +1,181 @@
+{
+  "id": "integration-sevdesk",
+  "name": "sevDesk",
+  "description": "Sync InvoiceLeaf invoices to sevDesk on a schedule with contact resolution and idempotent mappings.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "book",
+  "category": "accounting",
+  "tags": ["sevdesk", "accounting", "invoice-sync"],
+  "dataAccess": ["documents", "companies"],
+  "externalAuth": [
+    {
+      "provider": "sevdesk",
+      "name": "sevDesk",
+      "type": "api_key",
+      "apiKey": {
+        "headerName": "Authorization",
+        "instructions": "Generate an API token in sevDesk and paste it here. The token is sent as the raw Authorization header value."
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "scheduled-invoice-sync",
+      "type": "schedule",
+      "name": "Scheduled Invoice Sync",
+      "description": "Synchronize recent InvoiceLeaf invoices to sevDesk",
+      "schedule": "0 * * * *",
+      "handler": "syncInvoices",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test sevDesk Connection",
+      "description": "Verify API-key access and discover default sync IDs in sevDesk",
+      "handler": "testConnection",
+      "icon": "check"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "baseUrl": {
+        "type": "string",
+        "title": "sevDesk API Base URL",
+        "description": "Default is https://my.sevdesk.de/api/v1"
+      },
+      "contactPersonId": {
+        "type": "number",
+        "title": "Contact Person ID",
+        "description": "Required if auto-discovery cannot infer a SevUser from existing invoices."
+      },
+      "addressCountryId": {
+        "type": "number",
+        "title": "Address Country ID",
+        "description": "Required if auto-discovery cannot infer StaticCountry from existing invoices."
+      },
+      "unityId": {
+        "type": "number",
+        "title": "Default Unity ID",
+        "default": 1,
+        "description": "Unity reference for invoice positions (e.g., piece)."
+      },
+      "contactCategoryId": {
+        "type": "number",
+        "title": "Contact Category ID",
+        "default": 3,
+        "description": "Category id for auto-created contacts."
+      },
+      "targetStatus": {
+        "type": "number",
+        "title": "Invoice Status in sevDesk",
+        "enum": [100, 200],
+        "default": 100,
+        "description": "100 = Draft, 200 = Open"
+      },
+      "invoiceType": {
+        "type": "string",
+        "title": "Invoice Type",
+        "enum": ["RE", "WKR", "SR", "MA", "TR", "AR", "ER"],
+        "default": "RE"
+      },
+      "taxType": {
+        "type": "string",
+        "title": "Tax Type",
+        "enum": ["default", "eu", "noteu", "custom", "ss"],
+        "default": "default"
+      },
+      "taxRuleId": {
+        "type": "string",
+        "title": "Tax Rule ID (sevDesk 2.0)",
+        "enum": ["1", "2", "3", "4", "5", "11", "17", "18", "19", "20", "21"],
+        "default": "1"
+      },
+      "taxText": {
+        "type": "string",
+        "title": "Tax Text",
+        "default": "Umsatzsteuer 19%"
+      },
+      "defaultTaxRate": {
+        "type": "number",
+        "title": "Default Tax Rate",
+        "default": 19,
+        "minimum": 0,
+        "maximum": 100
+      },
+      "defaultCurrency": {
+        "type": "string",
+        "title": "Default Currency",
+        "default": "EUR"
+      },
+      "initialSyncLookbackHours": {
+        "type": "number",
+        "title": "Initial Sync Lookback (hours)",
+        "description": "Used only until first successful run checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "maxDocumentsPerRun": {
+        "type": "number",
+        "title": "Max Documents Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "pageSize": {
+        "type": "number",
+        "title": "Page Size",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 200
+      },
+      "invoiceNumberPrefix": {
+        "type": "string",
+        "title": "Invoice Number Prefix",
+        "description": "Optional prefix added to InvoiceLeaf invoice numbers before sending to sevDesk."
+      },
+      "fallbackContactName": {
+        "type": "string",
+        "title": "Fallback Contact Name",
+        "default": "InvoiceLeaf Contact"
+      },
+      "includeDraftDocuments": {
+        "type": "boolean",
+        "title": "Include Draft Documents",
+        "default": false
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "sevDesk Connection",
+        "description": "API endpoint and defaults discovered from your account",
+        "fields": ["baseUrl", "contactPersonId", "addressCountryId", "unityId", "contactCategoryId"]
+      },
+      {
+        "title": "Invoice Defaults",
+        "description": "Tax and invoice defaults for newly synced documents",
+        "fields": ["targetStatus", "invoiceType", "taxType", "taxRuleId", "taxText", "defaultTaxRate", "defaultCurrency"]
+      },
+      {
+        "title": "Sync Limits",
+        "description": "Checkpoint window and per-run throughput",
+        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments"]
+      },
+      {
+        "title": "Mapping Defaults",
+        "description": "Invoice number and contact naming behavior",
+        "fields": ["invoiceNumberPrefix", "fallbackContactName"]
+      }
+    ]
+  }
+}

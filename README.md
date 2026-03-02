@@ -10,6 +10,7 @@ This directory contains npm packages for integrating with InvoiceLeaf.
 | [telegram-bot](./telegram-bot) | Telegram bot payload builders and callback action outputs |
 | [integration-smtp-mail](./integration-smtp-mail) | SMTP send + IMAP PDF crawl and import |
 | [integration-xero](./integration-xero) | Scheduled InvoiceLeaf to Xero invoice synchronization |
+| [integration-sevdesk](./integration-sevdesk) | Scheduled InvoiceLeaf to sevDesk invoice synchronization |
 
 ## Development
 
