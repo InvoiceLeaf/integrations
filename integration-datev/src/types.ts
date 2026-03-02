@@ -15,6 +15,13 @@ export interface DatevIntegrationConfig {
   defaultClientId?: string;
   defaultImportType?: DatevImportType;
   defaultAccountingMonth?: string;
+  includeDraftDocuments?: boolean;
+  requireProcessedDocuments?: boolean;
+  initialSyncLookbackHours?: number;
+  maxDocumentsPerRun?: number;
+  pageSize?: number;
+  enableEventSync?: boolean;
+  cancelOnDeleteEvent?: boolean;
   requestTimeoutMs?: number;
   maxRequestAttempts?: number;
 }
@@ -151,4 +158,25 @@ export interface UploadDxsoJobFileInput extends JobInput {
   fileName: string;
   fileContentBase64: string;
   contentType?: string;
+}
+
+export interface SyncFailure {
+  documentId: string;
+  error: string;
+}
+
+export interface SyncInvoicesResult extends HandlerResult {
+  startedAt: string;
+  completedAt: string;
+  fromDate: string;
+  checkpointUpdated: boolean;
+  processed: number;
+  synced: number;
+  skipped: number;
+  failed: number;
+  failures: SyncFailure[];
+}
+
+export interface DatevSyncState {
+  lastSuccessfulSyncAt?: string;
 }

@@ -15,6 +15,10 @@ DATEV integration for InvoiceLeaf focused on the `accounting:dxso-jobs` API.
   - get job status
   - finalize/cancel job
   - read protocol entries
+- Outbound document sync handlers:
+  - scheduled sync (`syncInvoices`)
+  - event sync on document create/update (`syncInvoiceEvent`)
+  - optional cancel-on-delete handler (`deleteDocumentEvent`)
 - Auth discovery action for DATEV OIDC metadata
 - Endpoint template action to inspect how to fill all path placeholders (`{client-id}`, `{job-id}`)
 - Generic custom endpoint action for advanced use cases
@@ -32,6 +36,9 @@ DATEV integration for InvoiceLeaf focused on the `accounting:dxso-jobs` API.
 - `apiBaseUrl`: optional override (defaults to DATEV dxso platform endpoints)
 - `xDatevClientId`: sent as `X-DATEV-Client-Id` on each request
 - `defaultImportType` + `defaultAccountingMonth`: defaults for dxso job creation
+- `initialSyncLookbackHours`, `maxDocumentsPerRun`, `pageSize`: scheduled sync limits
+- `enableEventSync`: enables/disables create/update event-driven sync
+- `cancelOnDeleteEvent`: attempts to cancel mapped DATEV job on delete events
 
 ## Development
 

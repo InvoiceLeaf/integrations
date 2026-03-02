@@ -63,8 +63,52 @@
       }
     }
   ],
-  "triggers": [],
+  "triggers": [
+    {
+      "id": "scheduled-document-sync",
+      "type": "schedule",
+      "name": "Scheduled Document Sync",
+      "description": "Synchronize recent InvoiceLeaf documents to DATEV dxso-jobs",
+      "schedule": "0 * * * *",
+      "handler": "syncInvoices",
+      "configurable": true
+    },
+    {
+      "id": "on-document-created",
+      "type": "event",
+      "name": "On Document Created",
+      "description": "Sync newly created documents to DATEV",
+      "events": ["document.created"],
+      "handler": "syncInvoiceEvent",
+      "configurable": true
+    },
+    {
+      "id": "on-document-updated",
+      "type": "event",
+      "name": "On Document Updated",
+      "description": "Sync updated documents to DATEV",
+      "events": ["document.updated"],
+      "handler": "syncInvoiceEvent",
+      "configurable": true
+    },
+    {
+      "id": "on-document-deleted",
+      "type": "event",
+      "name": "On Document Deleted",
+      "description": "Optionally request cancellation for mapped DATEV dxso jobs when documents are deleted",
+      "events": ["document.deleted"],
+      "handler": "deleteDocumentEvent",
+      "configurable": true
+    }
+  ],
   "actions": [
+    {
+      "id": "sync-invoices-now",
+      "name": "Sync Documents to DATEV Now",
+      "description": "Run an on-demand outbound sync for recent InvoiceLeaf documents.",
+      "handler": "syncInvoices",
+      "icon": "refresh"
+    },
     {
       "id": "test-connection",
       "name": "Test DATEV Connection",
@@ -359,6 +403,48 @@
         "title": "Default Accounting Month",
         "description": "Format YYYY-MM"
       },
+      "includeDraftDocuments": {
+        "type": "boolean",
+        "title": "Include Draft Documents",
+        "default": false
+      },
+      "requireProcessedDocuments": {
+        "type": "boolean",
+        "title": "Require Processed Documents",
+        "default": true
+      },
+      "initialSyncLookbackHours": {
+        "type": "number",
+        "title": "Initial Sync Lookback (hours)",
+        "description": "Used only until first successful sync checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "maxDocumentsPerRun": {
+        "type": "number",
+        "title": "Max Documents Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "pageSize": {
+        "type": "number",
+        "title": "Page Size",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 200
+      },
+      "enableEventSync": {
+        "type": "boolean",
+        "title": "Enable Event Sync",
+        "default": true
+      },
+      "cancelOnDeleteEvent": {
+        "type": "boolean",
+        "title": "Cancel DATEV Job On Delete Event",
+        "default": false
+      },
       "requestTimeoutMs": {
         "type": "number",
         "title": "Request Timeout (ms)",
@@ -386,6 +472,11 @@
         "title": "Default Endpoint Values",
         "description": "Path/body defaults used by DATEV dxso actions",
         "fields": ["defaultClientId", "defaultImportType", "defaultAccountingMonth"]
+      },
+      {
+        "title": "Sync Behavior",
+        "description": "Scheduled/event sync behavior and per-run limits",
+        "fields": ["includeDraftDocuments", "requireProcessedDocuments", "initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "enableEventSync", "cancelOnDeleteEvent"]
       },
       {
         "title": "Reliability",

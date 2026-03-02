@@ -29,7 +29,7 @@ import type {
   UploadDxsoJobFileInput,
 } from '../types.js';
 
-interface DatevRuntime {
+export interface DatevRuntime {
   client: DatevClient;
   authProvider: string;
   environment: DatevEnvironment;
@@ -435,7 +435,7 @@ export const listDxsoJobProtocolEntries: IntegrationHandler<
   }
 };
 
-async function buildRuntime(
+export async function buildRuntime(
   context: IntegrationContext<DatevIntegrationConfig>
 ): Promise<DatevRuntime> {
   const authProvider = resolveAuthProvider(context.config);
@@ -468,7 +468,7 @@ async function buildRuntime(
   };
 }
 
-function requireClientId(inputClientId: string | undefined, defaultClientId: string | undefined): string {
+export function requireClientId(inputClientId: string | undefined, defaultClientId: string | undefined): string {
   const clientId = trimToUndefined(inputClientId) ?? trimToUndefined(defaultClientId);
   if (!clientId) {
     throw new Error('clientId is required. Provide it in action input or set defaultClientId in config.');
@@ -476,7 +476,7 @@ function requireClientId(inputClientId: string | undefined, defaultClientId: str
   return clientId;
 }
 
-function requireJobId(jobId: string | undefined): string {
+export function requireJobId(jobId: string | undefined): string {
   const normalized = trimToUndefined(jobId);
   if (!normalized) {
     throw new Error('jobId is required.');
@@ -502,7 +502,7 @@ function applyPathParams(path: string, params: Record<string, string> | undefine
   return output;
 }
 
-function toErrorMessage(error: unknown): string {
+export function toErrorMessage(error: unknown): string {
   if (error instanceof DatevApiError) {
     const body = trimToUndefined(error.responseBody);
     return body
@@ -536,7 +536,7 @@ function truncate(value: string, maxLength: number): string {
   return `${value.slice(0, maxLength - 3)}...`;
 }
 
-function trimToUndefined(value: string | undefined): string | undefined {
+export function trimToUndefined(value: string | undefined): string | undefined {
   if (!value) {
     return undefined;
   }

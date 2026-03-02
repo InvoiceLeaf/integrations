@@ -12,3 +12,6 @@ export {
   cancelDxsoJob,
   listDxsoJobProtocolEntries,
 } from './actions.js';
+export { syncInvoices } from './syncInvoices.js';
+export { syncInvoiceEvent } from './syncInvoiceEvent.js';
+export { deleteDocumentEvent } from './deleteDocumentEvent.js';

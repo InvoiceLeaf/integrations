@@ -15,6 +15,9 @@ export {
   finalizeDxsoJob,
   cancelDxsoJob,
   listDxsoJobProtocolEntries,
+  syncInvoices,
+  syncInvoiceEvent,
+  deleteDocumentEvent,
 } from './handlers/index.js';
 
 export type {
@@ -40,4 +43,7 @@ export type {
   JobInput,
   CreateDxsoJobInput,
   UploadDxsoJobFileInput,
+  SyncFailure,
+  SyncInvoicesResult,
+  DatevSyncState,
 } from './types.js';
