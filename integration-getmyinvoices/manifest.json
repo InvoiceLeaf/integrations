@@ -1,0 +1,332 @@
+{
+  "id": "integration-getmyinvoices",
+  "name": "GetMyInvoices",
+  "description": "Bi-directional InvoiceLeaf <-> GetMyInvoices document synchronization with scheduled and event-driven sync.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "book",
+  "iconUrl": "https://www.getmyinvoices.com/wp-content/uploads/2023/12/gmi-logo.svg",
+  "category": "accounting",
+  "tags": ["getmyinvoices", "accounting", "document-sync"],
+  "dataAccess": ["documents", "companies"],
+  "externalAuth": [
+    {
+      "provider": "getmyinvoices",
+      "name": "GetMyInvoices",
+      "type": "api_key",
+      "apiKey": {
+        "headerName": "X-API-KEY",
+        "instructions": "Create an API key in GetMyInvoices and paste it here. It is sent as the X-API-KEY header."
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "scheduled-document-sync",
+      "type": "schedule",
+      "name": "Scheduled Document Sync",
+      "description": "Synchronize recent InvoiceLeaf documents to GetMyInvoices",
+      "schedule": "0 * * * *",
+      "handler": "syncInvoices",
+      "configurable": true
+    },
+    {
+      "id": "on-document-created",
+      "type": "event",
+      "name": "On Document Created",
+      "description": "Sync newly created InvoiceLeaf documents to GetMyInvoices",
+      "events": ["document.created"],
+      "handler": "syncInvoiceEvent",
+      "configurable": true
+    },
+    {
+      "id": "on-document-updated",
+      "type": "event",
+      "name": "On Document Updated",
+      "description": "Sync updated InvoiceLeaf documents to GetMyInvoices",
+      "events": ["document.updated"],
+      "handler": "syncInvoiceEvent",
+      "configurable": true
+    },
+    {
+      "id": "on-document-deleted",
+      "type": "event",
+      "name": "On Document Deleted",
+      "description": "Delete mapped GetMyInvoices documents when InvoiceLeaf documents are deleted",
+      "events": ["document.deleted"],
+      "handler": "deleteInvoiceEvent",
+      "configurable": true
+    },
+    {
+      "id": "scheduled-inbound-sync",
+      "type": "schedule",
+      "name": "Scheduled GetMyInvoices Import",
+      "description": "Import new or changed GetMyInvoices documents into InvoiceLeaf",
+      "schedule": "15 * * * *",
+      "handler": "pullDocumentsFromGetmyinvoices",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test GetMyInvoices Connection",
+      "description": "Verify API-key access and inspect account details",
+      "handler": "testConnection",
+      "icon": "check"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "baseUrl": {
+        "type": "string",
+        "title": "GetMyInvoices API Base URL",
+        "description": "Default is https://api.getmyinvoices.com/accounts/v3"
+      },
+      "apiKey": {
+        "type": "string",
+        "title": "GetMyInvoices API Key",
+        "format": "password",
+        "description": "Optional fallback when external API-key connection is not available in UI."
+      },
+      "applicationHeader": {
+        "type": "string",
+        "title": "X-Application Header",
+        "default": "InvoiceLeaf Integration",
+        "description": "Optional value sent in the X-Application header."
+      },
+      "defaultDocumentType": {
+        "type": "string",
+        "title": "Default Document Type",
+        "enum": [
+          "INCOMING_INVOICE",
+          "RECEIPT",
+          "PAYMENT_RECEIPT",
+          "EXPENSE_REIMBURSEMENT",
+          "SALES_INVOICE",
+          "CREDIT_NOTE",
+          "STATEMENT",
+          "DELIVERY_NOTE",
+          "ORDER_CONFIRMATION",
+          "PAYROLL",
+          "COMPANY_REGISTRATION_DOCUMENT",
+          "MISC",
+          "TRAVEL_EXPENSES",
+          "REMINDER"
+        ],
+        "default": "INCOMING_INVOICE"
+      },
+      "payableDocumentType": {
+        "type": "string",
+        "title": "Payable Document Type",
+        "enum": [
+          "INCOMING_INVOICE",
+          "RECEIPT",
+          "PAYMENT_RECEIPT",
+          "EXPENSE_REIMBURSEMENT",
+          "SALES_INVOICE",
+          "CREDIT_NOTE",
+          "STATEMENT",
+          "DELIVERY_NOTE",
+          "ORDER_CONFIRMATION",
+          "PAYROLL",
+          "COMPANY_REGISTRATION_DOCUMENT",
+          "MISC",
+          "TRAVEL_EXPENSES",
+          "REMINDER"
+        ],
+        "default": "INCOMING_INVOICE"
+      },
+      "receivableDocumentType": {
+        "type": "string",
+        "title": "Receivable Document Type",
+        "enum": [
+          "INCOMING_INVOICE",
+          "RECEIPT",
+          "PAYMENT_RECEIPT",
+          "EXPENSE_REIMBURSEMENT",
+          "SALES_INVOICE",
+          "CREDIT_NOTE",
+          "STATEMENT",
+          "DELIVERY_NOTE",
+          "ORDER_CONFIRMATION",
+          "PAYROLL",
+          "COMPANY_REGISTRATION_DOCUMENT",
+          "MISC",
+          "TRAVEL_EXPENSES",
+          "REMINDER"
+        ],
+        "default": "SALES_INVOICE"
+      },
+      "defaultPaymentMethod": {
+        "type": "string",
+        "title": "Default Payment Method",
+        "enum": [
+          "bank_transfer",
+          "cash",
+          "check",
+          "direct_debit",
+          "credit",
+          "cc",
+          "paypal",
+          "online_payment",
+          "amazon_pay",
+          "apple_pay",
+          "google_pay",
+          "external_receivables_management",
+          "cashbox",
+          "offsetting",
+          "other"
+        ],
+        "default": "bank_transfer"
+      },
+      "defaultPaymentStatus": {
+        "type": "string",
+        "title": "Default Payment Status",
+        "enum": ["Unknown", "Paid", "Partially", "Not paid"],
+        "default": "Unknown"
+      },
+      "defaultCurrency": {
+        "type": "string",
+        "title": "Default Currency",
+        "default": "EUR"
+      },
+      "defaultCountryUid": {
+        "type": "number",
+        "title": "Default Company Country UID",
+        "description": "Optional countryUid used when auto-creating companies."
+      },
+      "autoCreateCompanies": {
+        "type": "boolean",
+        "title": "Auto Create Companies",
+        "default": true
+      },
+      "fallbackCompanyName": {
+        "type": "string",
+        "title": "Fallback Company Name",
+        "default": "InvoiceLeaf Company"
+      },
+      "runOcrOnUpload": {
+        "type": "boolean",
+        "title": "Run OCR on Upload",
+        "default": false
+      },
+      "documentNumberPrefix": {
+        "type": "string",
+        "title": "Document Number Prefix",
+        "description": "Optional prefix added before InvoiceLeaf invoiceId when syncing outbound."
+      },
+      "initialSyncLookbackHours": {
+        "type": "number",
+        "title": "Initial Sync Lookback (hours)",
+        "description": "Used only until first successful outbound checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "maxDocumentsPerRun": {
+        "type": "number",
+        "title": "Max Outbound Documents Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "pageSize": {
+        "type": "number",
+        "title": "Outbound Page Size",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 200
+      },
+      "includeDraftDocuments": {
+        "type": "boolean",
+        "title": "Include Draft Documents",
+        "default": false
+      },
+      "enableInboundSync": {
+        "type": "boolean",
+        "title": "Enable Inbound Sync",
+        "default": true
+      },
+      "inboundInitialSyncLookbackHours": {
+        "type": "number",
+        "title": "Inbound Initial Lookback (hours)",
+        "description": "Used only until first successful inbound checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "inboundMaxDocumentsPerRun": {
+        "type": "number",
+        "title": "Inbound Max Documents Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "inboundPageSize": {
+        "type": "number",
+        "title": "Inbound Page Size",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 500
+      },
+      "inboundIncludeArchived": {
+        "type": "boolean",
+        "title": "Inbound Include Archived",
+        "default": true
+      },
+      "inboundIncludeDeleted": {
+        "type": "boolean",
+        "title": "Inbound Include Deleted",
+        "default": true
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "GetMyInvoices Connection",
+        "description": "API endpoint and credential fallbacks",
+        "fields": ["baseUrl", "apiKey", "applicationHeader"]
+      },
+      {
+        "title": "Outbound Defaults",
+        "description": "Document/company defaults used during InvoiceLeaf -> GetMyInvoices sync",
+        "fields": [
+          "defaultDocumentType",
+          "payableDocumentType",
+          "receivableDocumentType",
+          "defaultPaymentMethod",
+          "defaultPaymentStatus",
+          "defaultCurrency",
+          "autoCreateCompanies",
+          "defaultCountryUid",
+          "fallbackCompanyName",
+          "documentNumberPrefix",
+          "runOcrOnUpload"
+        ]
+      },
+      {
+        "title": "Sync Limits",
+        "description": "Checkpoint windows and per-run throughput",
+        "fields": [
+          "initialSyncLookbackHours",
+          "maxDocumentsPerRun",
+          "pageSize",
+          "includeDraftDocuments",
+          "enableInboundSync",
+          "inboundInitialSyncLookbackHours",
+          "inboundMaxDocumentsPerRun",
+          "inboundPageSize",
+          "inboundIncludeArchived",
+          "inboundIncludeDeleted"
+        ]
+      }
+    ]
+  }
+}

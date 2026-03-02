@@ -11,6 +11,7 @@ This directory contains npm packages for integrating with InvoiceLeaf.
 | [integration-smtp-mail](./integration-smtp-mail) | SMTP send + IMAP PDF crawl and import |
 | [integration-xero](./integration-xero) | Scheduled InvoiceLeaf to Xero invoice synchronization |
 | [integration-sevdesk](./integration-sevdesk) | Scheduled InvoiceLeaf to sevDesk invoice synchronization |
+| [integration-getmyinvoices](./integration-getmyinvoices) | Bi-directional InvoiceLeaf and GetMyInvoices document synchronization |
 
 ## Development
 
