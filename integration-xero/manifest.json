@@ -1,0 +1,134 @@
+{
+  "id": "integration-xero",
+  "name": "Xero",
+  "description": "Sync InvoiceLeaf invoices to Xero on a schedule with contact resolution and idempotent mappings.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "book",
+  "category": "accounting",
+  "tags": ["xero", "accounting", "invoice-sync"],
+  "dataAccess": ["documents", "companies"],
+  "externalAuth": [
+    {
+      "provider": "xero",
+      "name": "Xero",
+      "type": "oauth2",
+      "oauth": {
+        "authorizeUrl": "https://login.xero.com/identity/connect/authorize",
+        "tokenUrl": "https://identity.xero.com/connect/token",
+        "scopes": [
+          "offline_access",
+          "accounting.transactions",
+          "accounting.contacts"
+        ]
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "scheduled-invoice-sync",
+      "type": "schedule",
+      "name": "Scheduled Invoice Sync",
+      "description": "Synchronize recent InvoiceLeaf invoices to Xero",
+      "schedule": "0 * * * *",
+      "handler": "syncInvoices",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test Xero Connection",
+      "description": "Verify OAuth access and tenant accessibility in Xero",
+      "handler": "testConnection",
+      "icon": "check"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "xeroTenantId": {
+        "type": "string",
+        "title": "Xero Tenant ID",
+        "description": "Required when your Xero account is connected to multiple tenants."
+      },
+      "targetStatus": {
+        "type": "string",
+        "title": "Invoice Status in Xero",
+        "enum": ["DRAFT", "AUTHORISED"],
+        "default": "DRAFT"
+      },
+      "initialSyncLookbackHours": {
+        "type": "number",
+        "title": "Initial Sync Lookback (hours)",
+        "description": "Used only until first successful run checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "maxDocumentsPerRun": {
+        "type": "number",
+        "title": "Max Documents Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "pageSize": {
+        "type": "number",
+        "title": "Page Size",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 200
+      },
+      "invoiceNumberPrefix": {
+        "type": "string",
+        "title": "Invoice Number Prefix",
+        "description": "Optional prefix added to InvoiceLeaf invoice numbers before sending to Xero."
+      },
+      "defaultRevenueAccountCode": {
+        "type": "string",
+        "title": "Default Revenue Account Code",
+        "description": "Optional Xero account code for receivable invoice lines."
+      },
+      "defaultExpenseAccountCode": {
+        "type": "string",
+        "title": "Default Expense Account Code",
+        "description": "Optional Xero account code for payable invoice lines."
+      },
+      "fallbackContactName": {
+        "type": "string",
+        "title": "Fallback Contact Name",
+        "default": "InvoiceLeaf Contact"
+      },
+      "includeDraftDocuments": {
+        "type": "boolean",
+        "title": "Include Draft Documents",
+        "default": false
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Xero Connection",
+        "description": "Tenant and authorization behavior",
+        "fields": ["xeroTenantId", "targetStatus"]
+      },
+      {
+        "title": "Sync Limits",
+        "description": "Checkpoint window and per-run throughput",
+        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments"]
+      },
+      {
+        "title": "Mapping Defaults",
+        "description": "Invoice number and account mapping behavior",
+        "fields": ["invoiceNumberPrefix", "defaultRevenueAccountCode", "defaultExpenseAccountCode", "fallbackContactName"]
+      }
+    ]
+  }
+}
+
