@@ -1,0 +1,132 @@
+{
+  "id": "integration-zoho",
+  "name": "Zoho Books",
+  "description": "Sync InvoiceLeaf invoices to Zoho Books on a schedule with contact resolution and idempotent mappings.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "book",
+  "category": "accounting",
+  "tags": ["zoho", "zoho-books", "accounting", "invoice-sync"],
+  "dataAccess": ["documents", "companies"],
+  "externalAuth": [
+    {
+      "provider": "zoho-books",
+      "name": "Zoho Books",
+      "type": "oauth2",
+      "oauth": {
+        "authorizeUrl": "https://accounts.zoho.com/oauth/v2/auth",
+        "tokenUrl": "https://accounts.zoho.com/oauth/v2/token",
+        "scopes": [
+          "ZohoBooks.fullaccess.all",
+          "offline_access"
+        ]
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "scheduled-invoice-sync",
+      "type": "schedule",
+      "name": "Scheduled Invoice Sync",
+      "description": "Synchronize recent InvoiceLeaf invoices to Zoho Books",
+      "schedule": "0 * * * *",
+      "handler": "syncInvoices",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test Zoho Books Connection",
+      "description": "Verify OAuth access and organization accessibility in Zoho Books",
+      "handler": "testConnection",
+      "icon": "check"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "organizationId": {
+        "type": "string",
+        "title": "Zoho Organization ID",
+        "description": "Optional explicit organization ID. If not set, the first accessible organization is used."
+      },
+      "apiBaseUrl": {
+        "type": "string",
+        "title": "Zoho API Base URL",
+        "description": "Optional override. Defaults to https://www.zohoapis.com/books/v3"
+      },
+      "initialSyncLookbackHours": {
+        "type": "number",
+        "title": "Initial Sync Lookback (hours)",
+        "description": "Used only until first successful run checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "maxDocumentsPerRun": {
+        "type": "number",
+        "title": "Max Documents Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "pageSize": {
+        "type": "number",
+        "title": "Page Size",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 200
+      },
+      "invoiceNumberPrefix": {
+        "type": "string",
+        "title": "Invoice Number Prefix",
+        "description": "Optional prefix added to InvoiceLeaf invoice numbers before sending to Zoho Books."
+      },
+      "defaultItemId": {
+        "type": "string",
+        "title": "Default Item ID",
+        "description": "Optional Zoho Item ID for invoice lines."
+      },
+      "fallbackCustomerName": {
+        "type": "string",
+        "title": "Fallback Customer Name",
+        "default": "InvoiceLeaf Customer"
+      },
+      "includeDraftDocuments": {
+        "type": "boolean",
+        "title": "Include Draft Documents",
+        "default": false
+      },
+      "syncPayables": {
+        "type": "boolean",
+        "title": "Sync Payables",
+        "description": "Zoho MVP sync currently targets receivable invoices only. Payables are skipped unless custom logic is added.",
+        "default": false
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Zoho Connection",
+        "description": "Organization and API endpoint behavior",
+        "fields": ["organizationId", "apiBaseUrl"]
+      },
+      {
+        "title": "Sync Limits",
+        "description": "Checkpoint window and per-run throughput",
+        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments"]
+      },
+      {
+        "title": "Mapping Defaults",
+        "description": "Numbering and customer defaults",
+        "fields": ["invoiceNumberPrefix", "defaultItemId", "fallbackCustomerName", "syncPayables"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "id": "integration-outlook",
+  "name": "Outlook",
+  "description": "Import PDF attachments from Outlook/Microsoft 365 mailboxes into InvoiceLeaf using OAuth.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "mail",
+  "category": "communication",
+  "tags": ["outlook", "microsoft-365", "email", "attachments"],
+  "dataAccess": ["documents"],
+  "externalAuth": [
+    {
+      "provider": "outlook",
+      "name": "Microsoft Outlook",
+      "type": "oauth2",
+      "oauth": {
+        "authorizeUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+        "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+        "scopes": [
+          "offline_access",
+          "Mail.Read",
+          "User.Read",
+          "openid",
+          "profile",
+          "email"
+        ],
+        "pkceRequired": true
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "crawl-outlook-pdf-attachments",
+      "type": "schedule",
+      "name": "Crawl Outlook PDF Attachments",
+      "description": "Checks Outlook for PDF attachments and imports them into InvoiceLeaf",
+      "schedule": "*/15 * * * *",
+      "handler": "crawlPdfAttachments",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test Outlook Connection",
+      "description": "Verify Outlook OAuth credentials",
+      "handler": "testConnection",
+      "icon": "check"
+    },
+    {
+      "id": "crawl-now",
+      "name": "Crawl Outlook Now",
+      "description": "Run Outlook attachment crawl immediately",
+      "handler": "crawlPdfAttachments",
+      "icon": "refresh"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "folderId": {
+        "type": "string",
+        "title": "Mail Folder ID",
+        "description": "Outlook folder id. Use 'inbox' for primary inbox.",
+        "default": "inbox"
+      },
+      "lookbackDays": {
+        "type": "number",
+        "title": "Lookback Days",
+        "description": "Only scan messages received within this many days.",
+        "default": 30,
+        "minimum": 1,
+        "maximum": 365
+      },
+      "onlyUnread": {
+        "type": "boolean",
+        "title": "Only Unread Messages",
+        "default": false
+      },
+      "maxMessagesPerRun": {
+        "type": "number",
+        "title": "Max Messages Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 500
+      },
+      "maxAttachmentsPerMessage": {
+        "type": "number",
+        "title": "Max Attachments Per Message",
+        "default": 10,
+        "minimum": 1,
+        "maximum": 50
+      },
+      "stateKeyPrefix": {
+        "type": "string",
+        "title": "State Key Prefix",
+        "default": "outlook"
+      },
+      "dedupeTtlSeconds": {
+        "type": "number",
+        "title": "Dedupe TTL (seconds)",
+        "default": 7776000,
+        "minimum": 3600
+      },
+      "importSource": {
+        "type": "string",
+        "title": "Import Source",
+        "default": "outlook"
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Mailbox Query",
+        "description": "Configure which Outlook messages are scanned",
+        "fields": ["folderId", "lookbackDays", "onlyUnread"]
+      },
+      {
+        "title": "Crawler Limits",
+        "description": "Control per-run workload and dedupe",
+        "fields": ["maxMessagesPerRun", "maxAttachmentsPerMessage", "stateKeyPrefix", "dedupeTtlSeconds", "importSource"]
+      }
+    ]
+  }
+}

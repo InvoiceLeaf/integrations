@@ -1,0 +1,120 @@
+{
+  "id": "integration-gmail",
+  "name": "Gmail",
+  "description": "Import PDF attachments from Gmail into InvoiceLeaf using OAuth.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "mail",
+  "category": "communication",
+  "tags": ["gmail", "google", "email", "inbox", "attachments"],
+  "dataAccess": ["documents"],
+  "externalAuth": [
+    {
+      "provider": "gmail",
+      "name": "Gmail",
+      "type": "oauth2",
+      "oauth": {
+        "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+        "tokenUrl": "https://oauth2.googleapis.com/token",
+        "scopes": [
+          "https://www.googleapis.com/auth/gmail.readonly",
+          "openid",
+          "email",
+          "profile"
+        ],
+        "pkceRequired": true
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "crawl-gmail-pdf-attachments",
+      "type": "schedule",
+      "name": "Crawl Gmail PDF Attachments",
+      "description": "Checks Gmail for PDF attachments and imports them into InvoiceLeaf",
+      "schedule": "*/15 * * * *",
+      "handler": "crawlPdfAttachments",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test Gmail Connection",
+      "description": "Verify Gmail OAuth credentials",
+      "handler": "testConnection",
+      "icon": "check"
+    },
+    {
+      "id": "crawl-now",
+      "name": "Crawl Gmail Now",
+      "description": "Run Gmail attachment crawl immediately",
+      "handler": "crawlPdfAttachments",
+      "icon": "refresh"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "title": "Gmail Search Query",
+        "description": "Gmail search query used to find messages with PDF attachments.",
+        "default": "has:attachment filename:pdf newer_than:30d"
+      },
+      "includeSpamTrash": {
+        "type": "boolean",
+        "title": "Include Spam/Trash",
+        "default": false
+      },
+      "maxMessagesPerRun": {
+        "type": "number",
+        "title": "Max Messages Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 500
+      },
+      "maxAttachmentsPerMessage": {
+        "type": "number",
+        "title": "Max Attachments Per Message",
+        "default": 10,
+        "minimum": 1,
+        "maximum": 50
+      },
+      "stateKeyPrefix": {
+        "type": "string",
+        "title": "State Key Prefix",
+        "default": "gmail"
+      },
+      "dedupeTtlSeconds": {
+        "type": "number",
+        "title": "Dedupe TTL (seconds)",
+        "default": 7776000,
+        "minimum": 3600
+      },
+      "importSource": {
+        "type": "string",
+        "title": "Import Source",
+        "default": "gmail"
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Mailbox Query",
+        "description": "Configure which Gmail messages are scanned",
+        "fields": ["query", "includeSpamTrash"]
+      },
+      {
+        "title": "Crawler Limits",
+        "description": "Control per-run workload and dedupe",
+        "fields": ["maxMessagesPerRun", "maxAttachmentsPerMessage", "stateKeyPrefix", "dedupeTtlSeconds", "importSource"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "id": "integration-quickbooks",
+  "name": "QuickBooks",
+  "description": "Sync InvoiceLeaf invoices to QuickBooks Online on a schedule with contact/vendor resolution and idempotent mappings.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "book",
+  "category": "accounting",
+  "tags": ["quickbooks", "intuit", "accounting", "invoice-sync"],
+  "dataAccess": ["documents", "companies"],
+  "externalAuth": [
+    {
+      "provider": "quickbooks",
+      "name": "QuickBooks Online",
+      "type": "oauth2",
+      "oauth": {
+        "authorizeUrl": "https://appcenter.intuit.com/connect/oauth2",
+        "tokenUrl": "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
+        "scopes": [
+          "com.intuit.quickbooks.accounting",
+          "openid",
+          "profile",
+          "email",
+          "offline_access"
+        ]
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "scheduled-invoice-sync",
+      "type": "schedule",
+      "name": "Scheduled Invoice Sync",
+      "description": "Synchronize recent InvoiceLeaf invoices to QuickBooks Online",
+      "schedule": "0 * * * *",
+      "handler": "syncInvoices",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test QuickBooks Connection",
+      "description": "Verify OAuth access and company accessibility in QuickBooks Online",
+      "handler": "testConnection",
+      "icon": "check"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "realmId": {
+        "type": "string",
+        "title": "QuickBooks Realm ID",
+        "description": "Optional explicit realm/company ID. If not set, the connected accountId is used."
+      },
+      "apiBaseUrl": {
+        "type": "string",
+        "title": "QuickBooks API Base URL",
+        "description": "Optional override. Defaults to https://quickbooks.api.intuit.com/v3/company"
+      },
+      "initialSyncLookbackHours": {
+        "type": "number",
+        "title": "Initial Sync Lookback (hours)",
+        "description": "Used only until first successful run checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "maxDocumentsPerRun": {
+        "type": "number",
+        "title": "Max Documents Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "pageSize": {
+        "type": "number",
+        "title": "Page Size",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 200
+      },
+      "invoiceNumberPrefix": {
+        "type": "string",
+        "title": "Invoice Number Prefix",
+        "description": "Optional prefix added to InvoiceLeaf invoice numbers before sending to QuickBooks."
+      },
+      "defaultSalesItemId": {
+        "type": "string",
+        "title": "Default Sales Item ID",
+        "description": "Optional QuickBooks Item ID for receivable invoice lines."
+      },
+      "defaultExpenseAccountId": {
+        "type": "string",
+        "title": "Default Expense Account ID",
+        "description": "Optional QuickBooks Account ID for payable bill lines."
+      },
+      "fallbackCustomerName": {
+        "type": "string",
+        "title": "Fallback Customer Name",
+        "default": "InvoiceLeaf Customer"
+      },
+      "fallbackVendorName": {
+        "type": "string",
+        "title": "Fallback Vendor Name",
+        "default": "InvoiceLeaf Vendor"
+      },
+      "includeDraftDocuments": {
+        "type": "boolean",
+        "title": "Include Draft Documents",
+        "default": false
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "QuickBooks Connection",
+        "description": "Realm and API endpoint behavior",
+        "fields": ["realmId", "apiBaseUrl"]
+      },
+      {
+        "title": "Sync Limits",
+        "description": "Checkpoint window and per-run throughput",
+        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments"]
+      },
+      {
+        "title": "Mapping Defaults",
+        "description": "Numbering and accounting references",
+        "fields": ["invoiceNumberPrefix", "defaultSalesItemId", "defaultExpenseAccountId", "fallbackCustomerName", "fallbackVendorName"]
+      }
+    ]
+  }
+}

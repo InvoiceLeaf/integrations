@@ -1,0 +1,109 @@
+{
+  "id": "integration-lexoffice",
+  "name": "lexoffice",
+  "description": "Sync InvoiceLeaf document files to lexoffice as vouchers on a schedule with idempotent mappings.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "book",
+  "category": "accounting",
+  "tags": ["lexoffice", "voucher", "accounting", "document-sync"],
+  "dataAccess": ["documents", "companies"],
+  "externalAuth": [
+    {
+      "provider": "lexoffice",
+      "name": "lexoffice API Key",
+      "type": "api_key",
+      "apiKey": {
+        "headerName": "Authorization",
+        "prefix": "Bearer ",
+        "instructions": "Create a lexoffice API key in your lexoffice account and paste it here."
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "scheduled-document-sync",
+      "type": "schedule",
+      "name": "Scheduled Document Sync",
+      "description": "Synchronize recent InvoiceLeaf document files to lexoffice vouchers",
+      "schedule": "0 * * * *",
+      "handler": "syncInvoices",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test lexoffice Connection",
+      "description": "Verify API-key access to lexoffice",
+      "handler": "testConnection",
+      "icon": "check"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "apiBaseUrl": {
+        "type": "string",
+        "title": "lexoffice API Base URL",
+        "description": "Optional override. Defaults to https://api.lexoffice.io/v1"
+      },
+      "apiKey": {
+        "type": "string",
+        "title": "lexoffice API Key",
+        "format": "password",
+        "description": "Optional fallback when external API-key connection is not available in UI."
+      },
+      "initialSyncLookbackHours": {
+        "type": "number",
+        "title": "Initial Sync Lookback (hours)",
+        "description": "Used only until first successful run checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "maxDocumentsPerRun": {
+        "type": "number",
+        "title": "Max Documents Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "pageSize": {
+        "type": "number",
+        "title": "Page Size",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 200
+      },
+      "includeDraftDocuments": {
+        "type": "boolean",
+        "title": "Include Draft Documents",
+        "default": false
+      },
+      "fallbackFileNamePrefix": {
+        "type": "string",
+        "title": "Fallback File Name Prefix",
+        "default": "invoiceleaf"
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Connection",
+        "description": "Configure API-key access",
+        "fields": ["apiBaseUrl", "apiKey"]
+      },
+      {
+        "title": "Sync Limits",
+        "description": "Checkpoint window and per-run throughput",
+        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments", "fallbackFileNamePrefix"]
+      }
+    ]
+  }
+}
