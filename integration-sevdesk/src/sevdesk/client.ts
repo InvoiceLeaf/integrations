@@ -47,12 +47,12 @@ export interface SevdeskInvoiceUpsertInput {
   id?: string;
   invoiceDate: string;
   contactId: string;
-  contactPersonId: number;
-  addressCountryId: number;
-  status: 100 | 200;
+  contactPersonId?: number;
+  addressCountryId?: number;
+  status: 100;
   invoiceType: 'RE' | 'WKR' | 'SR' | 'MA' | 'TR' | 'AR' | 'ER';
   currency: string;
-  taxType: 'default' | 'eu' | 'noteu' | 'custom' | 'ss';
+  taxType: 'default' | 'eu' | 'noteu' | 'custom';
   taxRuleId: '1' | '2' | '3' | '4' | '5' | '11' | '17' | '18' | '19' | '20' | '21';
   taxText: string;
   taxRate: number;
@@ -147,14 +147,6 @@ export class SevdeskClient {
         id: Number(input.contactId),
         objectName: 'Contact',
       },
-      contactPerson: {
-        id: input.contactPersonId,
-        objectName: 'SevUser',
-      },
-      addressCountry: {
-        id: input.addressCountryId,
-        objectName: 'StaticCountry',
-      },
       discount: input.discount,
       status: String(input.status),
       taxRate: input.taxRate,
@@ -167,6 +159,19 @@ export class SevdeskClient {
       invoiceType: input.invoiceType,
       currency: input.currency,
     };
+
+    if (input.contactPersonId) {
+      invoice.contactPerson = {
+        id: input.contactPersonId,
+        objectName: 'SevUser',
+      };
+    }
+    if (input.addressCountryId) {
+      invoice.addressCountry = {
+        id: input.addressCountryId,
+        objectName: 'StaticCountry',
+      };
+    }
 
     if (input.id) {
       invoice.id = Number(input.id);
@@ -219,8 +224,30 @@ export class SevdeskClient {
     return result;
   }
 
+  async sendInvoiceBy(
+    invoiceId: string,
+    sendType: 'VPR' | 'VP' | 'VM' | 'VPDF' = 'VPDF'
+  ): Promise<SevdeskInvoice> {
+    const response = await this.request<Record<string, unknown>>(
+      'PUT',
+      `/Invoice/${encodeURIComponent(invoiceId)}/sendBy`,
+      undefined,
+      {
+        sendType,
+        sendDraft: false,
+      }
+    );
+
+    const updated = parseSingle<SevdeskInvoice>(response);
+    if (!updated?.id) {
+      throw new Error(`sevDesk did not return invoice details after sendBy for invoice ${invoiceId}.`);
+    }
+
+    return updated;
+  }
+
   private async request<T>(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'PUT',
     path: string,
     query?: Record<string, string | number | boolean | undefined>,
     body?: unknown

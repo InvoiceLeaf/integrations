@@ -23,4 +23,5 @@ Scheduled InvoiceLeaf to sevDesk invoice synchronization.
 ## Setup Notes
 
 - sevDesk uses API-key auth (`Authorization` header with the raw 32-char token).
-- If your sevDesk account has no existing invoices, set `contactPersonId` and `addressCountryId` in integration config.
+- `targetStatus=200` is applied using `Invoice/{invoiceId}/sendBy` after invoice creation.
+- If auto-discovery cannot find IDs from existing invoices, set `contactPersonId` and `addressCountryId` explicitly.

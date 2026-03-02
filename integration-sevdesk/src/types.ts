@@ -5,8 +5,9 @@ export interface SevdeskIntegrationConfig {
   addressCountryId?: number;
   unityId?: number;
   targetStatus?: 100 | 200;
+  sendTypeForOpenStatus?: 'VPR' | 'VP' | 'VM' | 'VPDF';
   invoiceType?: 'RE' | 'WKR' | 'SR' | 'MA' | 'TR' | 'AR' | 'ER';
-  taxType?: 'default' | 'eu' | 'noteu' | 'custom' | 'ss';
+  taxType?: 'default' | 'eu' | 'noteu' | 'custom';
   taxRuleId?: '1' | '2' | '3' | '4' | '5' | '11' | '17' | '18' | '19' | '20' | '21';
   taxText?: string;
   defaultTaxRate?: number;

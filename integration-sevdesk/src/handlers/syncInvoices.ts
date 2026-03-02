@@ -23,13 +23,14 @@ const DEFAULT_MAX_DOCUMENTS_PER_RUN = 100;
 const MAX_REPORTED_FAILURES = 25;
 
 interface RuntimeDefaults {
-  contactPersonId: number;
-  addressCountryId: number;
+  contactPersonId?: number;
+  addressCountryId?: number;
   unityId: number;
   taxType: NonNullable<SevdeskIntegrationConfig['taxType']>;
   taxRuleId: NonNullable<SevdeskIntegrationConfig['taxRuleId']>;
   taxText: string;
   targetStatus: NonNullable<SevdeskIntegrationConfig['targetStatus']>;
+  sendTypeForOpenStatus: NonNullable<SevdeskIntegrationConfig['sendTypeForOpenStatus']>;
   invoiceType: NonNullable<SevdeskIntegrationConfig['invoiceType']>;
   defaultCurrency: string;
   defaultTaxRate: number;
@@ -90,6 +91,11 @@ export const syncInvoices: IntegrationHandler<
     const apiKey = await context.credentials.getApiKey(SYSTEM);
     const sevdeskClient = new SevdeskClient(apiKey, context.config.baseUrl);
     const runtimeDefaults = await resolveRuntimeDefaults(context, sevdeskClient);
+    if (!runtimeDefaults.contactPersonId || !runtimeDefaults.addressCountryId) {
+      context.logger.warn(
+        'sevDesk contactPersonId/addressCountryId could not be auto-discovered. Proceeding with minimal payload and relying on sevDesk defaults.'
+      );
+    }
     const contactCache = new Map<string, SevdeskContact>();
 
     let page = 1;
@@ -243,7 +249,11 @@ async function syncSingleDocument(
     runtimeDefaults,
   });
 
-  const syncedInvoice = await client.saveInvoice(payload);
+  const savedInvoice = await client.saveInvoice(payload);
+  let syncedInvoice = savedInvoice;
+  if (runtimeDefaults.targetStatus === 200 && savedInvoice.id) {
+    syncedInvoice = await client.sendInvoiceBy(savedInvoice.id, runtimeDefaults.sendTypeForOpenStatus);
+  }
 
   await context.mappings.upsert({
     system: SYSTEM,
@@ -270,18 +280,6 @@ async function resolveRuntimeDefaults(
   const addressCountryId =
     toOptionalInt(context.config.addressCountryId) ?? toOptionalInt(discovered?.addressCountry?.id);
 
-  if (!contactPersonId) {
-    throw new Error(
-      'Missing contactPersonId in config and unable to auto-discover from existing sevDesk invoices.'
-    );
-  }
-
-  if (!addressCountryId) {
-    throw new Error(
-      'Missing addressCountryId in config and unable to auto-discover from existing sevDesk invoices.'
-    );
-  }
-
   const sampleContact = (await client.listContacts({ limit: 1, offset: 0 }))[0];
   const contactCategoryId =
     toOptionalInt(context.config.contactCategoryId) ??
@@ -296,6 +294,7 @@ async function resolveRuntimeDefaults(
     taxRuleId: context.config.taxRuleId ?? '1',
     taxText: trimToUndefined(context.config.taxText) ?? 'Umsatzsteuer 19%',
     targetStatus: context.config.targetStatus ?? 100,
+    sendTypeForOpenStatus: context.config.sendTypeForOpenStatus ?? 'VPDF',
     invoiceType: context.config.invoiceType ?? 'RE',
     defaultCurrency:
       trimToUndefined(context.config.defaultCurrency) ??
@@ -416,7 +415,6 @@ function buildInvoicePayload(input: BuildInvoicePayloadInput): SevdeskInvoiceUps
     contactId: input.contactId,
     contactPersonId: input.runtimeDefaults.contactPersonId,
     addressCountryId: input.runtimeDefaults.addressCountryId,
-    status: input.runtimeDefaults.targetStatus,
     invoiceType: input.runtimeDefaults.invoiceType,
     currency: trimToUndefined(input.document.currency?.code) ?? input.runtimeDefaults.defaultCurrency,
     taxType: input.runtimeDefaults.taxType,
@@ -424,6 +422,7 @@ function buildInvoicePayload(input: BuildInvoicePayloadInput): SevdeskInvoiceUps
     taxText: input.runtimeDefaults.taxText,
     taxRate: 0,
     discount: 0,
+    status: 100,
     invoiceNumber: input.invoiceNumber,
     header: input.invoiceNumber ? `Invoice ${input.invoiceNumber}` : undefined,
     address: formatAddress(company),

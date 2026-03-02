@@ -54,12 +54,12 @@
       "contactPersonId": {
         "type": "number",
         "title": "Contact Person ID",
-        "description": "Required if auto-discovery cannot infer a SevUser from existing invoices."
+        "description": "Optional override. If unset, the integration tries to discover from existing sevDesk invoices."
       },
       "addressCountryId": {
         "type": "number",
         "title": "Address Country ID",
-        "description": "Required if auto-discovery cannot infer StaticCountry from existing invoices."
+        "description": "Optional override. If unset, the integration tries to discover from existing sevDesk invoices."
       },
       "unityId": {
         "type": "number",
@@ -78,7 +78,14 @@
         "title": "Invoice Status in sevDesk",
         "enum": [100, 200],
         "default": 100,
-        "description": "100 = Draft, 200 = Open"
+        "description": "100 = Draft, 200 = Open (uses sendBy transition after create)"
+      },
+      "sendTypeForOpenStatus": {
+        "type": "string",
+        "title": "Send Type for Open Status",
+        "enum": ["VPR", "VP", "VM", "VPDF"],
+        "default": "VPDF",
+        "description": "Applied when targetStatus is 200 to move draft invoices to open/sent."
       },
       "invoiceType": {
         "type": "string",
@@ -89,7 +96,7 @@
       "taxType": {
         "type": "string",
         "title": "Tax Type",
-        "enum": ["default", "eu", "noteu", "custom", "ss"],
+        "enum": ["default", "eu", "noteu", "custom"],
         "default": "default"
       },
       "taxRuleId": {
@@ -164,7 +171,7 @@
       {
         "title": "Invoice Defaults",
         "description": "Tax and invoice defaults for newly synced documents",
-        "fields": ["targetStatus", "invoiceType", "taxType", "taxRuleId", "taxText", "defaultTaxRate", "defaultCurrency"]
+        "fields": ["targetStatus", "sendTypeForOpenStatus", "invoiceType", "taxType", "taxRuleId", "taxText", "defaultTaxRate", "defaultCurrency"]
       },
       {
         "title": "Sync Limits",
