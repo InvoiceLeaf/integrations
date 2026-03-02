@@ -2,7 +2,7 @@
   "id": "integration-sevdesk",
   "name": "sevDesk",
   "description": "Sync InvoiceLeaf invoices to sevDesk on a schedule with contact resolution and idempotent mappings.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -33,6 +33,42 @@
       "schedule": "0 * * * *",
       "handler": "syncInvoices",
       "configurable": true
+    },
+    {
+      "id": "on-document-created",
+      "type": "event",
+      "name": "On Invoice Created",
+      "description": "Sync newly created InvoiceLeaf invoices to sevDesk",
+      "events": ["document.created"],
+      "handler": "syncInvoiceEvent",
+      "configurable": true
+    },
+    {
+      "id": "on-document-updated",
+      "type": "event",
+      "name": "On Invoice Updated",
+      "description": "Sync updated InvoiceLeaf invoices to sevDesk",
+      "events": ["document.updated"],
+      "handler": "syncInvoiceEvent",
+      "configurable": true
+    },
+    {
+      "id": "on-document-deleted",
+      "type": "event",
+      "name": "On Invoice Deleted",
+      "description": "Cancel mapped sevDesk invoices when InvoiceLeaf invoices are deleted",
+      "events": ["document.deleted"],
+      "handler": "deleteInvoiceEvent",
+      "configurable": true
+    },
+    {
+      "id": "scheduled-inbound-sync",
+      "type": "schedule",
+      "name": "Scheduled sevDesk Import",
+      "description": "Import new or changed sevDesk invoices into InvoiceLeaf",
+      "schedule": "15 * * * *",
+      "handler": "pullInvoicesFromSevdesk",
+      "configurable": true
     }
   ],
   "actions": [
@@ -51,6 +87,12 @@
         "type": "string",
         "title": "sevDesk API Base URL",
         "description": "Default is https://my.sevdesk.de/api/v1"
+      },
+      "apiKey": {
+        "type": "string",
+        "title": "sevDesk API Key",
+        "format": "password",
+        "description": "Optional fallback for environments where external API-key connection is not available in UI."
       },
       "contactPersonId": {
         "type": "number",
@@ -159,6 +201,34 @@
         "type": "boolean",
         "title": "Include Draft Documents",
         "default": false
+      },
+      "enableInboundSync": {
+        "type": "boolean",
+        "title": "Enable Inbound sevDesk Sync",
+        "default": true,
+        "description": "When enabled, sevDesk invoices are imported into InvoiceLeaf by the scheduled inbound trigger."
+      },
+      "inboundInitialSyncLookbackHours": {
+        "type": "number",
+        "title": "Inbound Initial Lookback (hours)",
+        "description": "Used only until the first successful inbound sync checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "inboundMaxInvoicesPerRun": {
+        "type": "number",
+        "title": "Inbound Max Invoices Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "inboundPageSize": {
+        "type": "number",
+        "title": "Inbound Page Size",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 200
       }
     }
   },
@@ -167,7 +237,7 @@
       {
         "title": "sevDesk Connection",
         "description": "API endpoint and defaults discovered from your account",
-        "fields": ["baseUrl", "contactPersonId", "addressCountryId", "unityId", "contactCategoryId"]
+        "fields": ["baseUrl", "apiKey", "contactPersonId", "addressCountryId", "unityId", "contactCategoryId"]
       },
       {
         "title": "Invoice Defaults",
@@ -177,7 +247,7 @@
       {
         "title": "Sync Limits",
         "description": "Checkpoint window and per-run throughput",
-        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments"]
+        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments", "enableInboundSync", "inboundInitialSyncLookbackHours", "inboundMaxInvoicesPerRun", "inboundPageSize"]
       },
       {
         "title": "Mapping Defaults",

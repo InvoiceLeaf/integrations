@@ -1,8 +1,7 @@
 import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
 import type { SevdeskIntegrationConfig, TestConnectionResult } from '../types.js';
 import { SevdeskApiError, SevdeskClient } from '../sevdesk/client.js';
-
-const SYSTEM = 'sevdesk';
+import { resolveSevdeskApiKey } from './auth.js';
 
 export const testConnection: IntegrationHandler<
   unknown,
@@ -13,16 +12,7 @@ export const testConnection: IntegrationHandler<
   context: IntegrationContext<SevdeskIntegrationConfig>
 ): Promise<TestConnectionResult> => {
   try {
-    const connectionInfo = await context.credentials.getConnectionInfo(SYSTEM);
-    if (!connectionInfo.connected) {
-      return {
-        success: false,
-        connected: false,
-        error: 'sevDesk is not connected. Add an API key first.',
-      };
-    }
-
-    const apiKey = await context.credentials.getApiKey(SYSTEM);
+    const apiKey = await resolveSevdeskApiKey(context);
     const client = new SevdeskClient(apiKey, context.config.baseUrl);
 
     const [bookkeepingSystemVersion, contacts, invoices] = await Promise.all([

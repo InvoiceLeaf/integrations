@@ -1,4 +1,5 @@
 export interface SevdeskIntegrationConfig {
+  apiKey?: string;
   baseUrl?: string;
   contactCategoryId?: number;
   contactPersonId?: number;
@@ -18,6 +19,10 @@ export interface SevdeskIntegrationConfig {
   invoiceNumberPrefix?: string;
   fallbackContactName?: string;
   includeDraftDocuments?: boolean;
+  enableInboundSync?: boolean;
+  inboundInitialSyncLookbackHours?: number;
+  inboundMaxInvoicesPerRun?: number;
+  inboundPageSize?: number;
 }
 
 export interface HandlerResult {
@@ -51,6 +56,23 @@ export interface SyncInvoicesResult extends HandlerResult {
   failures: SyncFailure[];
 }
 
+export interface InboundSyncResult extends HandlerResult {
+  startedAt: string;
+  completedAt: string;
+  fromDate: string;
+  checkpointUpdated: boolean;
+  processed: number;
+  imported: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  failures: SyncFailure[];
+}
+
 export interface SevdeskSyncState {
   lastSuccessfulSyncAt?: string;
+}
+
+export interface SevdeskInboundSyncState {
+  lastInboundSyncAt?: string;
 }

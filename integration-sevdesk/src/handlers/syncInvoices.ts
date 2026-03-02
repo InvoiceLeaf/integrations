@@ -12,17 +12,18 @@ import type {
   SevdeskInvoiceUpsertInput,
 } from '../sevdesk/client.js';
 import { SevdeskApiError, SevdeskClient } from '../sevdesk/client.js';
+import { resolveSevdeskApiKey } from './auth.js';
 
-const SYSTEM = 'sevdesk';
-const ENTITY_INVOICE = 'invoice';
-const ENTITY_CONTACT = 'contact';
-const SYNC_STATE_KEY = 'sevdesk:lastSuccessfulSyncAt';
+export const SYSTEM = 'sevdesk';
+export const ENTITY_INVOICE = 'invoice';
+export const ENTITY_CONTACT = 'contact';
+export const SYNC_STATE_KEY = 'sevdesk:lastSuccessfulSyncAt';
 const DEFAULT_LOOKBACK_HOURS = 24;
 const DEFAULT_PAGE_SIZE = 50;
 const DEFAULT_MAX_DOCUMENTS_PER_RUN = 100;
 const MAX_REPORTED_FAILURES = 25;
 
-interface RuntimeDefaults {
+export interface RuntimeDefaults {
   contactPersonId?: number;
   addressCountryId?: number;
   unityId: number;
@@ -78,17 +79,7 @@ export const syncInvoices: IntegrationHandler<
   };
 
   try {
-    const connectionInfo = await context.credentials.getConnectionInfo(SYSTEM);
-    if (!connectionInfo.connected) {
-      return {
-        ...resultBase,
-        success: false,
-        error: 'sevDesk is not connected. Add an API key first.',
-        checkpointUpdated: false,
-      };
-    }
-
-    const apiKey = await context.credentials.getApiKey(SYSTEM);
+    const apiKey = await resolveSevdeskApiKey(context);
     const sevdeskClient = new SevdeskClient(apiKey, context.config.baseUrl);
     const runtimeDefaults = await resolveRuntimeDefaults(context, sevdeskClient);
     if (!runtimeDefaults.contactPersonId || !runtimeDefaults.addressCountryId) {
@@ -217,7 +208,7 @@ export const syncInvoices: IntegrationHandler<
   }
 };
 
-async function syncSingleDocument(
+export async function syncSingleDocument(
   context: IntegrationContext<SevdeskIntegrationConfig>,
   client: SevdeskClient,
   document: Document,
@@ -269,7 +260,7 @@ async function syncSingleDocument(
   return syncedInvoice;
 }
 
-async function resolveRuntimeDefaults(
+export async function resolveRuntimeDefaults(
   context: IntegrationContext<SevdeskIntegrationConfig>,
   client: SevdeskClient
 ): Promise<RuntimeDefaults> {
@@ -517,7 +508,7 @@ function defaultLineDescription(document: Document): string {
   return trimToUndefined(document.description) || `Invoice ${document.invoiceId ?? document.id}`;
 }
 
-function isSyncableDocument(document: Document, includeDraftDocuments: boolean): boolean {
+export function isSyncableDocument(document: Document, includeDraftDocuments: boolean): boolean {
   if (document.deleted) {
     return false;
   }

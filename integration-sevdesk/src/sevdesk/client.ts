@@ -20,9 +20,18 @@ export interface SevdeskInvoice {
   objectName?: string;
   invoiceNumber?: string;
   status?: string | number;
+  create?: string;
+  update?: string;
   contactPerson?: SevdeskReference;
   addressCountry?: SevdeskReference;
   currency?: string;
+}
+
+export interface SevdeskInvoicePdf {
+  filename?: string;
+  mimeType?: string;
+  base64encoded?: boolean;
+  content?: string;
 }
 
 export interface SevdeskContactCreateInput {
@@ -246,6 +255,38 @@ export class SevdeskClient {
     return updated;
   }
 
+  async cancelInvoice(invoiceId: string): Promise<SevdeskInvoice> {
+    const response = await this.request<Record<string, unknown>>(
+      'POST',
+      `/Invoice/${encodeURIComponent(invoiceId)}/cancelInvoice`
+    );
+
+    const cancelled = parseSingle<SevdeskInvoice>(response);
+    if (!cancelled?.id) {
+      throw new Error(`sevDesk did not return invoice details after cancellation for invoice ${invoiceId}.`);
+    }
+
+    return cancelled;
+  }
+
+  async getInvoicePdf(invoiceId: string): Promise<SevdeskInvoicePdf> {
+    const response = await this.request<Record<string, unknown>>(
+      'GET',
+      `/Invoice/${encodeURIComponent(invoiceId)}/getPdf`,
+      {
+        download: true,
+        preventSendBy: true,
+      }
+    );
+
+    return {
+      filename: asString(response.filename),
+      mimeType: asString(response.mimeType),
+      base64encoded: typeof response.base64encoded === 'boolean' ? response.base64encoded : undefined,
+      content: asString(response.content),
+    };
+  }
+
   private async request<T>(
     method: 'GET' | 'POST' | 'PUT',
     path: string,
@@ -315,6 +356,13 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     return value as Record<string, unknown>;
   }
   return null;
+}
+
+function asString(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value;
+  }
+  return undefined;
 }
 
 function trimTrailingSlash(value: string): string {
