@@ -55,18 +55,25 @@ export const syncInvoiceEvent: IntegrationHandler<
       contactCache
     );
 
-    await context.data.patchDocumentIntegrationMeta({
-      documentId: document.id,
-      system: SYSTEM,
-      externalId: syncedInvoice.id,
-      status: 'synced',
-      lastSyncedAt: new Date().toISOString(),
-      metadata: {
-        sevdeskInvoiceId: syncedInvoice.id,
-        invoiceNumber: syncedInvoice.invoiceNumber,
-        sevdeskStatus: syncedInvoice.status,
-      },
-    });
+    try {
+      await context.data.patchDocumentIntegrationMeta({
+        documentId: document.id,
+        system: SYSTEM,
+        externalId: syncedInvoice.id,
+        status: 'synced',
+        lastSyncedAt: new Date().toISOString(),
+        metadata: {
+          sevdeskInvoiceId: syncedInvoice.id,
+          invoiceNumber: syncedInvoice.invoiceNumber,
+          sevdeskStatus: syncedInvoice.status,
+        },
+      });
+    } catch (metaError) {
+      context.logger.warn('Could not patch sevDesk sync metadata after successful sync.', {
+        documentId: document.id,
+        error: toErrorMessage(metaError),
+      });
+    }
 
     return {
       success: true,
@@ -79,20 +86,19 @@ export const syncInvoiceEvent: IntegrationHandler<
       error: message,
     });
 
-    try {
-      await context.data.patchDocumentIntegrationMeta({
-        documentId,
-        system: SYSTEM,
-        status: 'failed',
-        lastSyncedAt: new Date().toISOString(),
-        errorSummary: message.slice(0, 500),
-      });
-    } catch (metaError) {
+    // Best effort only; sync result should reflect the primary sevDesk operation outcome.
+    void context.data.patchDocumentIntegrationMeta({
+      documentId,
+      system: SYSTEM,
+      status: 'failed',
+      lastSyncedAt: new Date().toISOString(),
+      errorSummary: message.slice(0, 500),
+    }).catch((metaError) => {
       context.logger.warn('Failed to patch sync metadata after sevDesk event sync error', {
         documentId,
         error: toErrorMessage(metaError),
       });
-    }
+    });
 
     return {
       success: false,

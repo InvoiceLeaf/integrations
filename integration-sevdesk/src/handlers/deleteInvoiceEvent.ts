@@ -42,17 +42,24 @@ export const deleteInvoiceEvent: IntegrationHandler<
     const client = new SevdeskClient(apiKey, context.config.baseUrl);
     const cancelledInvoice = await client.cancelInvoice(mapping.externalId);
 
-    await context.data.patchDocumentIntegrationMeta({
-      documentId,
-      system: SYSTEM,
-      externalId: mapping.externalId,
-      status: 'deleted',
-      lastSyncedAt: new Date().toISOString(),
-      metadata: {
-        sevdeskInvoiceId: mapping.externalId,
-        sevdeskStatus: cancelledInvoice.status ?? 'cancelled',
-      },
-    });
+    try {
+      await context.data.patchDocumentIntegrationMeta({
+        documentId,
+        system: SYSTEM,
+        externalId: mapping.externalId,
+        status: 'deleted',
+        lastSyncedAt: new Date().toISOString(),
+        metadata: {
+          sevdeskInvoiceId: mapping.externalId,
+          sevdeskStatus: cancelledInvoice.status ?? 'cancelled',
+        },
+      });
+    } catch (metaError) {
+      context.logger.warn('Could not patch sevDesk delete metadata after successful cancellation.', {
+        documentId,
+        error: toErrorMessage(metaError),
+      });
+    }
 
     await context.mappings.upsert({
       system: SYSTEM,

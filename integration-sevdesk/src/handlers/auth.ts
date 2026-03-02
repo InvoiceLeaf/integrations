@@ -7,13 +7,10 @@ export async function resolveSevdeskApiKey(
   context: IntegrationContext<SevdeskIntegrationConfig>
 ): Promise<string> {
   try {
-    const connectionInfo = await context.credentials.getConnectionInfo(SYSTEM);
-    if (connectionInfo.connected) {
-      const apiKey = await context.credentials.getApiKey(SYSTEM);
-      const trimmed = apiKey.trim();
-      if (trimmed.length > 0) {
-        return trimmed;
-      }
+    const apiKey = await context.credentials.getApiKey(SYSTEM);
+    const trimmed = trimToUndefined(apiKey);
+    if (trimmed) {
+      return trimmed;
     }
   } catch (error) {
     context.logger.warn('Could not read sevDesk external credentials, falling back to config apiKey.', {

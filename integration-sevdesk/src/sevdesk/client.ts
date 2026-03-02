@@ -293,15 +293,7 @@ export class SevdeskClient {
     query?: Record<string, string | number | boolean | undefined>,
     body?: unknown
   ): Promise<T> {
-    const url = new URL(path, `${this.baseUrl}/`);
-    if (query) {
-      for (const [key, value] of Object.entries(query)) {
-        if (value === undefined || value === null) {
-          continue;
-        }
-        url.searchParams.set(key, String(value));
-      }
-    }
+    const url = buildRequestUrl(this.baseUrl, path, query);
 
     const headers: Record<string, string> = {
       Authorization: this.apiKey,
@@ -319,7 +311,7 @@ export class SevdeskClient {
       init.body = JSON.stringify(body);
     }
 
-    return requestWithRetry<T>(url.toString(), init);
+    return requestWithRetry<T>(url, init);
   }
 }
 
@@ -367,6 +359,34 @@ function asString(value: unknown): string | undefined {
 
 function trimTrailingSlash(value: string): string {
   return value.endsWith('/') ? value.slice(0, -1) : value;
+}
+
+function buildRequestUrl(
+  baseUrl: string,
+  path: string,
+  query?: Record<string, string | number | boolean | undefined>
+): string {
+  const normalizedBase = trimTrailingSlash(baseUrl);
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  let url = `${normalizedBase}${normalizedPath}`;
+
+  if (!query) {
+    return url;
+  }
+
+  const queryParts: string[] = [];
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null) {
+      continue;
+    }
+    queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+  }
+
+  if (queryParts.length > 0) {
+    url += `?${queryParts.join('&')}`;
+  }
+
+  return url;
 }
 
 async function requestWithRetry<T>(url: string, init: RequestInit): Promise<T> {
