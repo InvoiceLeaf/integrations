@@ -54,6 +54,15 @@ export const handleDocumentUpdated: IntegrationHandler<
       error: `Failed to fetch document: ${(error as Error).message}`,
     };
   }
+  if (!document?.id) {
+    logger.warn('Document unavailable for updated notification, skipping', { documentId });
+    return {
+      success: true,
+      skipped: true,
+      reason: 'document_not_available',
+      documentId,
+    };
+  }
 
   // Apply filters
   const filterResult = shouldNotify(document, config);
