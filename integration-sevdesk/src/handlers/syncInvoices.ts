@@ -63,14 +63,12 @@ export const syncInvoices: IntegrationHandler<
     1000
   );
 
-  const syncState = await context.state.get<SevdeskSyncState>(SYNC_STATE_KEY);
   const fallbackFromDate = new Date(Date.now() - lookbackHours * 60 * 60 * 1000).toISOString();
-  const fromDate = syncState?.lastSuccessfulSyncAt ?? fallbackFromDate;
 
   const resultBase: Omit<SyncInvoicesResult, 'success' | 'message' | 'error' | 'checkpointUpdated'> = {
     startedAt,
     completedAt: startedAt,
-    fromDate,
+    fromDate: fallbackFromDate,
     processed: 0,
     synced: 0,
     skipped: 0,
@@ -79,6 +77,18 @@ export const syncInvoices: IntegrationHandler<
   };
 
   try {
+    let fromDate = fallbackFromDate;
+    try {
+      const syncState = await context.state.get<SevdeskSyncState>(SYNC_STATE_KEY);
+      fromDate = syncState?.lastSuccessfulSyncAt ?? fallbackFromDate;
+    } catch (stateError) {
+      context.logger.warn('Could not read sevDesk sync checkpoint. Using fallback lookback window.', {
+        key: SYNC_STATE_KEY,
+        error: toErrorMessage(stateError),
+      });
+    }
+    resultBase.fromDate = fromDate;
+
     const apiKey = await resolveSevdeskApiKey(context);
     const sevdeskClient = new SevdeskClient(apiKey, context.config.baseUrl);
     const runtimeDefaults = await resolveRuntimeDefaults(context, sevdeskClient);
@@ -177,10 +187,17 @@ export const syncInvoices: IntegrationHandler<
     const completedAt = new Date().toISOString();
     let checkpointUpdated = false;
     if (resultBase.failed === 0) {
-      await context.state.set<SevdeskSyncState>(SYNC_STATE_KEY, {
-        lastSuccessfulSyncAt: completedAt,
-      });
-      checkpointUpdated = true;
+      try {
+        await context.state.set<SevdeskSyncState>(SYNC_STATE_KEY, {
+          lastSuccessfulSyncAt: completedAt,
+        });
+        checkpointUpdated = true;
+      } catch (stateError) {
+        context.logger.warn('Could not persist sevDesk sync checkpoint.', {
+          key: SYNC_STATE_KEY,
+          error: toErrorMessage(stateError),
+        });
+      }
     }
 
     return {

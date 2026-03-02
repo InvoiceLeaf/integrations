@@ -70,12 +70,21 @@ export const pullInvoicesFromSevdesk: IntegrationHandler<
     1000
   );
 
-  const inboundState = await context.state.get<SevdeskInboundSyncState>(INBOUND_SYNC_STATE_KEY);
   const fallbackFromDate = new Date(Date.now() - lookbackHours * 60 * 60 * 1000).toISOString();
-  const fromDate = inboundState?.lastInboundSyncAt ?? fallbackFromDate;
-  resultBase.fromDate = fromDate;
 
   try {
+    let fromDate = fallbackFromDate;
+    try {
+      const inboundState = await context.state.get<SevdeskInboundSyncState>(INBOUND_SYNC_STATE_KEY);
+      fromDate = inboundState?.lastInboundSyncAt ?? fallbackFromDate;
+    } catch (stateError) {
+      context.logger.warn('Could not read sevDesk inbound checkpoint. Using fallback lookback window.', {
+        key: INBOUND_SYNC_STATE_KEY,
+        error: toErrorMessage(stateError),
+      });
+    }
+    resultBase.fromDate = fromDate;
+
     const apiKey = await resolveSevdeskApiKey(context);
     const client = new SevdeskClient(apiKey, context.config.baseUrl);
 
@@ -149,10 +158,17 @@ export const pullInvoicesFromSevdesk: IntegrationHandler<
     const completedAt = new Date().toISOString();
     let checkpointUpdated = false;
     if (resultBase.failed === 0) {
-      await context.state.set<SevdeskInboundSyncState>(INBOUND_SYNC_STATE_KEY, {
-        lastInboundSyncAt: completedAt,
-      });
-      checkpointUpdated = true;
+      try {
+        await context.state.set<SevdeskInboundSyncState>(INBOUND_SYNC_STATE_KEY, {
+          lastInboundSyncAt: completedAt,
+        });
+        checkpointUpdated = true;
+      } catch (stateError) {
+        context.logger.warn('Could not persist sevDesk inbound checkpoint.', {
+          key: INBOUND_SYNC_STATE_KEY,
+          error: toErrorMessage(stateError),
+        });
+      }
     }
 
     return {
