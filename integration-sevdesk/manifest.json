@@ -9,6 +9,7 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "book",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/sevdesk.png",
   "category": "accounting",
   "tags": ["sevdesk", "accounting", "invoice-sync"],
   "dataAccess": ["documents", "companies"],
