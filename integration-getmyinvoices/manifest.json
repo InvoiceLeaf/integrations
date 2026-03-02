@@ -2,7 +2,7 @@
   "id": "integration-getmyinvoices",
   "name": "GetMyInvoices",
   "description": "Bi-directional InvoiceLeaf <-> GetMyInvoices document synchronization with scheduled and event-driven sync.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -99,6 +99,12 @@
         "title": "X-Application Header",
         "default": "InvoiceLeaf Integration",
         "description": "Optional value sent in the X-Application header."
+      },
+      "userAgent": {
+        "type": "string",
+        "title": "User-Agent Header",
+        "default": "InvoiceLeaf integration-getmyinvoices/1.0",
+        "description": "Optional value sent in the User-Agent header."
       },
       "defaultDocumentType": {
         "type": "string",
@@ -292,7 +298,7 @@
       {
         "title": "GetMyInvoices Connection",
         "description": "API endpoint and credential fallbacks",
-        "fields": ["baseUrl", "apiKey", "applicationHeader"]
+        "fields": ["baseUrl", "apiKey", "applicationHeader", "userAgent"]
       },
       {
         "title": "Outbound Defaults",
