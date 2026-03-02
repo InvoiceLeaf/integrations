@@ -11,6 +11,8 @@ This directory contains npm packages for integrating with InvoiceLeaf.
 | [integration-smtp-mail](./integration-smtp-mail) | SMTP send + IMAP PDF crawl and import |
 | [integration-gmail](./integration-gmail) | Gmail OAuth mailbox crawl and PDF import |
 | [integration-outlook](./integration-outlook) | Outlook OAuth mailbox crawl and PDF import |
+| [integration-dropbox](./integration-dropbox) | Dropbox PDF import, directory lookup, and document upload |
+| [integration-google-drive](./integration-google-drive) | Google Drive PDF import, directory lookup, and document upload |
 | [integration-xero](./integration-xero) | Scheduled InvoiceLeaf to Xero invoice synchronization |
 | [integration-quickbooks](./integration-quickbooks) | Scheduled InvoiceLeaf to QuickBooks Online synchronization |
 | [integration-zoho](./integration-zoho) | Scheduled InvoiceLeaf to Zoho Books invoice synchronization |

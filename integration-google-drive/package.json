@@ -1,0 +1,40 @@
+{
+  "name": "@invoiceleaf/integration-google-drive",
+  "version": "1.0.0",
+  "description": "Google Drive integration for InvoiceLeaf: import PDF invoices and upload documents",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "invoiceleaf",
+    "integration",
+    "google-drive",
+    "drive",
+    "pdf"
+  ],
+  "author": "InvoiceLeaf <support@invoiceleaf.com>",
+  "license": "MIT",
+  "peerDependencies": {
+    "@invoiceleaf/integration-sdk": "^1.6.0"
+  },
+  "devDependencies": {
+    "@invoiceleaf/integration-sdk": "^1.6.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist",
+    "manifest.json",
+    "README.md"
+  ]
+}

@@ -1,0 +1,167 @@
+{
+  "id": "integration-google-drive",
+  "name": "Google Drive",
+  "description": "Import PDF invoices from Google Drive and upload InvoiceLeaf documents to Drive folders.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "folder",
+  "category": "storage",
+  "tags": ["google-drive", "drive", "files", "pdf"],
+  "dataAccess": ["documents"],
+  "externalAuth": [
+    {
+      "provider": "google-drive",
+      "name": "Google Drive",
+      "type": "oauth2",
+      "oauth": {
+        "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+        "tokenUrl": "https://oauth2.googleapis.com/token",
+        "scopes": [
+          "https://www.googleapis.com/auth/drive",
+          "openid",
+          "email",
+          "profile"
+        ],
+        "pkceRequired": true
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "scheduled-pdf-import",
+      "type": "schedule",
+      "name": "Scheduled Drive PDF Import",
+      "description": "Import PDF invoices from Google Drive",
+      "schedule": "*/30 * * * *",
+      "handler": "crawlPdfFiles",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test Google Drive Connection",
+      "description": "Verify Google Drive OAuth credentials",
+      "handler": "testConnection",
+      "icon": "check"
+    },
+    {
+      "id": "list-directories",
+      "name": "List Drive Directories",
+      "description": "List directories for folder selection",
+      "handler": "listDirectories",
+      "icon": "folder",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Google Drive folder id (defaults to root)."
+          },
+          "recursive": {
+            "type": "boolean",
+            "default": false
+          },
+          "limit": {
+            "type": "number",
+            "default": 200,
+            "minimum": 1,
+            "maximum": 2000
+          }
+        }
+      }
+    },
+    {
+      "id": "import-now",
+      "name": "Import PDFs Now",
+      "description": "Run Drive PDF import immediately",
+      "handler": "crawlPdfFiles",
+      "icon": "refresh"
+    },
+    {
+      "id": "upload-document",
+      "name": "Upload Document to Drive",
+      "description": "Upload an InvoiceLeaf document file to Google Drive",
+      "handler": "uploadDocument",
+      "icon": "upload",
+      "inputSchema": {
+        "type": "object",
+        "required": ["documentId"],
+        "properties": {
+          "documentId": {
+            "type": "string"
+          },
+          "targetFolderId": {
+            "type": "string",
+            "description": "Target Google Drive folder id."
+          },
+          "fileName": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "rootFolderId": {
+        "type": "string",
+        "title": "Root Folder ID",
+        "description": "Google Drive folder id to scan",
+        "default": "root"
+      },
+      "recursive": {
+        "type": "boolean",
+        "title": "Recursive Scan",
+        "default": false
+      },
+      "maxFilesPerRun": {
+        "type": "number",
+        "title": "Max Files Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "stateKeyPrefix": {
+        "type": "string",
+        "title": "State Key Prefix",
+        "default": "google-drive"
+      },
+      "dedupeTtlSeconds": {
+        "type": "number",
+        "title": "Dedupe TTL (seconds)",
+        "default": 7776000,
+        "minimum": 3600
+      },
+      "importSource": {
+        "type": "string",
+        "title": "Import Source",
+        "default": "google-drive"
+      },
+      "uploadTargetFolderId": {
+        "type": "string",
+        "title": "Default Upload Folder ID",
+        "default": "root"
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Import",
+        "description": "Configure Drive PDF crawling",
+        "fields": ["rootFolderId", "recursive", "maxFilesPerRun", "stateKeyPrefix", "dedupeTtlSeconds", "importSource"]
+      },
+      {
+        "title": "Upload",
+        "description": "Configure default upload destination",
+        "fields": ["uploadTargetFolderId"]
+      }
+    ]
+  }
+}

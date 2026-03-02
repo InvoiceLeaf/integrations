@@ -1,0 +1,172 @@
+{
+  "id": "integration-dropbox",
+  "name": "Dropbox",
+  "description": "Import PDF invoices from Dropbox and upload InvoiceLeaf documents to Dropbox folders.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "folder",
+  "category": "storage",
+  "tags": ["dropbox", "files", "pdf", "sync"],
+  "dataAccess": ["documents"],
+  "externalAuth": [
+    {
+      "provider": "dropbox",
+      "name": "Dropbox",
+      "type": "oauth2",
+      "oauth": {
+        "authorizeUrl": "https://www.dropbox.com/oauth2/authorize",
+        "tokenUrl": "https://api.dropboxapi.com/oauth2/token",
+        "scopes": [
+          "account_info.read",
+          "files.metadata.read",
+          "files.content.read",
+          "files.content.write",
+          "offline_access"
+        ],
+        "pkceRequired": true
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "scheduled-pdf-import",
+      "type": "schedule",
+      "name": "Scheduled Dropbox PDF Import",
+      "description": "Import PDF invoices from Dropbox",
+      "schedule": "*/30 * * * *",
+      "handler": "crawlPdfFiles",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test Dropbox Connection",
+      "description": "Verify Dropbox OAuth credentials",
+      "handler": "testConnection",
+      "icon": "check"
+    },
+    {
+      "id": "list-directories",
+      "name": "List Dropbox Directories",
+      "description": "List directories for folder selection",
+      "handler": "listDirectories",
+      "icon": "folder",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Dropbox path. Empty string means root."
+          },
+          "recursive": {
+            "type": "boolean",
+            "default": false
+          },
+          "limit": {
+            "type": "number",
+            "default": 200,
+            "minimum": 1,
+            "maximum": 2000
+          }
+        }
+      }
+    },
+    {
+      "id": "import-now",
+      "name": "Import PDFs Now",
+      "description": "Run Dropbox PDF import immediately",
+      "handler": "crawlPdfFiles",
+      "icon": "refresh"
+    },
+    {
+      "id": "upload-document",
+      "name": "Upload Document to Dropbox",
+      "description": "Upload an InvoiceLeaf document file to Dropbox",
+      "handler": "uploadDocument",
+      "icon": "upload",
+      "inputSchema": {
+        "type": "object",
+        "required": ["documentId"],
+        "properties": {
+          "documentId": {
+            "type": "string"
+          },
+          "targetPath": {
+            "type": "string",
+            "description": "Target Dropbox folder path."
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "rootPath": {
+        "type": "string",
+        "title": "Root Path",
+        "description": "Dropbox folder path to scan (empty means root)",
+        "default": ""
+      },
+      "recursive": {
+        "type": "boolean",
+        "title": "Recursive Scan",
+        "default": false
+      },
+      "maxFilesPerRun": {
+        "type": "number",
+        "title": "Max Files Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "stateKeyPrefix": {
+        "type": "string",
+        "title": "State Key Prefix",
+        "default": "dropbox"
+      },
+      "dedupeTtlSeconds": {
+        "type": "number",
+        "title": "Dedupe TTL (seconds)",
+        "default": 7776000,
+        "minimum": 3600
+      },
+      "importSource": {
+        "type": "string",
+        "title": "Import Source",
+        "default": "dropbox"
+      },
+      "uploadTargetPath": {
+        "type": "string",
+        "title": "Default Upload Target Path",
+        "default": "/InvoiceLeaf"
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Import",
+        "description": "Configure Dropbox PDF crawling",
+        "fields": ["rootPath", "recursive", "maxFilesPerRun", "stateKeyPrefix", "dedupeTtlSeconds", "importSource"]
+      },
+      {
+        "title": "Upload",
+        "description": "Configure default upload destination",
+        "fields": ["uploadTargetPath"]
+      }
+    ]
+  }
+}
