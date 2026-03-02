@@ -38,7 +38,20 @@ export const syncInvoiceEvent: IntegrationHandler<
     const client = new SevdeskClient(apiKey, context.config.baseUrl);
     const runtimeDefaults = await resolveRuntimeDefaults(context, client);
     const contactCache = new Map<string, SevdeskContact>();
-    const document = await context.data.getDocument(documentId);
+    const document = await context.data.getDocument(documentId).catch((error) => {
+      context.logger.warn('Could not load document for sevDesk event sync; skipping event sync.', {
+        documentId,
+        error: toErrorMessage(error),
+      });
+      return null;
+    });
+
+    if (!document?.id) {
+      return {
+        success: true,
+        message: `Document ${documentId} is no longer available and was skipped.`,
+      };
+    }
 
     if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false)) {
       return {
