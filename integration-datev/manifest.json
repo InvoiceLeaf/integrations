@@ -1,0 +1,397 @@
+{
+  "id": "integration-datev",
+  "name": "DATEV",
+  "description": "Connect InvoiceLeaf to DATEV accounting:dxso-jobs with OAuth2/OIDC, endpoint discovery, and full dxso-job lifecycle actions.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "book",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/datev.png",
+  "category": "accounting",
+  "tags": ["datev", "accounting", "dxso", "document-import", "oauth2"],
+  "dataAccess": ["documents", "companies"],
+  "externalAuth": [
+    {
+      "provider": "datev-openid",
+      "name": "DATEV OpenID (Production)",
+      "type": "oauth2",
+      "oauth": {
+        "authorizeUrl": "https://login.datev.de/openid/authorize",
+        "tokenUrl": "https://api.datev.de/token",
+        "scopes": [
+          "openid",
+          "accounting:clients:read",
+          "accounting:dxso-jobs",
+          "offline_access"
+        ],
+        "pkceRequired": true
+      }
+    },
+    {
+      "provider": "datev-openid-sandbox",
+      "name": "DATEV OpenID (Sandbox)",
+      "type": "oauth2",
+      "oauth": {
+        "authorizeUrl": "https://login.datev.de/openidsandbox/authorize",
+        "tokenUrl": "https://sandbox-api.datev.de/token",
+        "scopes": [
+          "openid",
+          "accounting:clients:read",
+          "accounting:dxso-jobs",
+          "offline_access"
+        ],
+        "pkceRequired": true
+      }
+    },
+    {
+      "provider": "datev-idp-next",
+      "name": "DATEV IDP Next",
+      "type": "oauth2",
+      "oauth": {
+        "authorizeUrl": "https://signin.datev.de/datevam/oauth2/realms/root/realms/user/authorize",
+        "tokenUrl": "https://signin.datev.de/datevam/oauth2/realms/root/realms/user/access_token",
+        "scopes": [
+          "openid",
+          "accounting:clients:read",
+          "accounting:dxso-jobs",
+          "offline_access"
+        ],
+        "pkceRequired": true
+      }
+    }
+  ],
+  "triggers": [],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test DATEV Connection",
+      "description": "Validate OAuth token + X-DATEV-Client-Id and fetch accessible clients.",
+      "handler": "testConnection",
+      "icon": "check"
+    },
+    {
+      "id": "discover-auth-endpoints",
+      "name": "Discover DATEV Auth Endpoints",
+      "description": "Read DATEV OIDC discovery metadata for sandbox or production.",
+      "handler": "discoverAuthEndpoints",
+      "icon": "book",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "environment": {
+            "type": "string",
+            "enum": ["production", "sandbox"],
+            "default": "production"
+          },
+          "discoveryUrl": {
+            "type": "string",
+            "description": "Optional direct OIDC discovery endpoint override."
+          }
+        }
+      }
+    },
+    {
+      "id": "list-endpoint-options",
+      "name": "List DATEV Endpoint Options",
+      "description": "Show all known DATEV dxso endpoint templates and how to fill placeholders.",
+      "handler": "listEndpointOptions",
+      "icon": "list",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "description": "Optional client-id placeholder value for URL examples."
+          },
+          "jobId": {
+            "type": "string",
+            "description": "Optional job-id placeholder value for URL examples."
+          }
+        }
+      }
+    },
+    {
+      "id": "call-datev-endpoint",
+      "name": "Call DATEV Endpoint",
+      "description": "Generic DATEV API call for custom endpoint testing.",
+      "handler": "callDatevEndpoint",
+      "icon": "terminal",
+      "inputSchema": {
+        "type": "object",
+        "required": ["method", "path"],
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "DELETE"]
+          },
+          "path": {
+            "type": "string",
+            "description": "Absolute API path, e.g. /clients/{client-id}/dxso-jobs"
+          },
+          "pathParams": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "body": {
+            "type": "object"
+          },
+          "contentType": {
+            "type": "string",
+            "default": "application/json"
+          }
+        }
+      }
+    },
+    {
+      "id": "list-clients",
+      "name": "List Accessible Clients",
+      "description": "GET /clients",
+      "handler": "listClients",
+      "icon": "users"
+    },
+    {
+      "id": "get-client",
+      "name": "Get Client",
+      "description": "GET /clients/{client-id}",
+      "handler": "getClient",
+      "icon": "building",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "description": "DATEV client-id (consultant-client format, e.g. 455148-1)."
+          }
+        }
+      }
+    },
+    {
+      "id": "create-dxso-job",
+      "name": "Create Dxso Job",
+      "description": "POST /clients/{client-id}/dxso-jobs",
+      "handler": "createDxsoJob",
+      "icon": "plus",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "importType": {
+            "type": "string",
+            "enum": [
+              "accountsPayableLedgerImport",
+              "accountsReceivableLedgerImport",
+              "cashLedgerImport"
+            ]
+          },
+          "accountingMonth": {
+            "type": "string",
+            "description": "Accounting month as YYYY-MM"
+          }
+        }
+      }
+    },
+    {
+      "id": "upload-dxso-job-file",
+      "name": "Upload Dxso Job File",
+      "description": "POST /clients/{client-id}/dxso-jobs/{job-id}/files (multipart/form-data)",
+      "handler": "uploadDxsoJobFile",
+      "icon": "upload",
+      "inputSchema": {
+        "type": "object",
+        "required": ["jobId", "fileName", "fileContentBase64"],
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "fileContentBase64": {
+            "type": "string",
+            "description": "File payload encoded as base64."
+          },
+          "contentType": {
+            "type": "string",
+            "default": "application/octet-stream"
+          }
+        }
+      }
+    },
+    {
+      "id": "get-dxso-job",
+      "name": "Get Dxso Job Status",
+      "description": "GET /clients/{client-id}/dxso-jobs/{job-id}",
+      "handler": "getDxsoJob",
+      "icon": "info",
+      "inputSchema": {
+        "type": "object",
+        "required": ["jobId"],
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "finalize-dxso-job",
+      "name": "Finalize Dxso Job",
+      "description": "PUT /clients/{client-id}/dxso-jobs/{job-id}",
+      "handler": "finalizeDxsoJob",
+      "icon": "check",
+      "inputSchema": {
+        "type": "object",
+        "required": ["jobId"],
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "ready": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    {
+      "id": "cancel-dxso-job",
+      "name": "Cancel Dxso Job",
+      "description": "DELETE /clients/{client-id}/dxso-jobs/{job-id}",
+      "handler": "cancelDxsoJob",
+      "icon": "x",
+      "inputSchema": {
+        "type": "object",
+        "required": ["jobId"],
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "list-dxso-protocol-entries",
+      "name": "List Dxso Protocol Entries",
+      "description": "GET /clients/{client-id}/dxso-jobs/{job-id}/protocol-entries",
+      "handler": "listDxsoJobProtocolEntries",
+      "icon": "list",
+      "inputSchema": {
+        "type": "object",
+        "required": ["jobId"],
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "environment": {
+        "type": "string",
+        "title": "DATEV Environment",
+        "enum": ["production", "sandbox"],
+        "default": "sandbox"
+      },
+      "authProvider": {
+        "type": "string",
+        "title": "Auth Provider",
+        "enum": ["datev-openid", "datev-openid-sandbox", "datev-idp-next"],
+        "description": "Optional override for which configured DATEV OAuth provider to use."
+      },
+      "apiBaseUrl": {
+        "type": "string",
+        "title": "API Base URL Override",
+        "description": "Optional override. Defaults to DATEV accounting-dxso-jobs platform or platform-sandbox URL."
+      },
+      "xDatevClientId": {
+        "type": "string",
+        "title": "X-DATEV-Client-Id",
+        "description": "DATEV app client id sent in the X-DATEV-Client-Id request header."
+      },
+      "defaultClientId": {
+        "type": "string",
+        "title": "Default Client ID",
+        "description": "Default DATEV client-id placeholder used by actions when no clientId is provided."
+      },
+      "defaultImportType": {
+        "type": "string",
+        "title": "Default Import Type",
+        "enum": [
+          "accountsPayableLedgerImport",
+          "accountsReceivableLedgerImport",
+          "cashLedgerImport"
+        ],
+        "default": "accountsReceivableLedgerImport"
+      },
+      "defaultAccountingMonth": {
+        "type": "string",
+        "title": "Default Accounting Month",
+        "description": "Format YYYY-MM"
+      },
+      "requestTimeoutMs": {
+        "type": "number",
+        "title": "Request Timeout (ms)",
+        "default": 30000,
+        "minimum": 1000,
+        "maximum": 120000
+      },
+      "maxRequestAttempts": {
+        "type": "number",
+        "title": "Max Request Attempts",
+        "default": 3,
+        "minimum": 1,
+        "maximum": 5
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Connection",
+        "description": "Environment, OAuth provider, and DATEV API base URL",
+        "fields": ["environment", "authProvider", "apiBaseUrl", "xDatevClientId"]
+      },
+      {
+        "title": "Default Endpoint Values",
+        "description": "Path/body defaults used by DATEV dxso actions",
+        "fields": ["defaultClientId", "defaultImportType", "defaultAccountingMonth"]
+      },
+      {
+        "title": "Reliability",
+        "description": "Timeouts and retries for DATEV API calls",
+        "fields": ["requestTimeoutMs", "maxRequestAttempts"]
+      }
+    ]
+  }
+}

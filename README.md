@@ -12,6 +12,7 @@ This directory contains npm packages for integrating with InvoiceLeaf.
 | [integration-xero](./integration-xero) | Scheduled InvoiceLeaf to Xero invoice synchronization |
 | [integration-sevdesk](./integration-sevdesk) | Scheduled InvoiceLeaf to sevDesk invoice synchronization |
 | [integration-getmyinvoices](./integration-getmyinvoices) | Bi-directional InvoiceLeaf and GetMyInvoices document synchronization |
+| [integration-datev](./integration-datev) | DATEV accounting:dxso-jobs integration with endpoint discovery and dxso lifecycle actions |
 
 ## Development
 
