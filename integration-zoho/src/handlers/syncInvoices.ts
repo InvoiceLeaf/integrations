@@ -324,13 +324,13 @@ function buildLineItems(
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = quantity === 0 ? 1 : quantity;
-    const amount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitPrice, 0));
-    const rate = toFiniteNumber(item.unitPrice, amount / safeQuantity);
+    const amount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0));
+    const rate = toFiniteNumber(item.unitAmount, amount / safeQuantity);
 
     lineItems.push({
       item_id: itemId,
-      name: trimToUndefined(item.description) ?? undefined,
-      description: trimToUndefined(item.description) ?? defaultLineDescription(document),
+      name: trimToUndefined(item.name) ?? undefined,
+      description: trimToUndefined(item.name) ?? defaultLineDescription(document),
       quantity: safeQuantity,
       rate,
     });

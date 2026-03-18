@@ -386,12 +386,12 @@ function buildInvoiceLines(document: Document, salesItemId: string): QuickBooksI
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = quantity === 0 ? 1 : quantity;
-    const amount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitPrice, 0));
-    const unitPrice = toFiniteNumber(item.unitPrice, amount / safeQuantity);
+    const amount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0));
+    const unitPrice = toFiniteNumber(item.unitAmount, amount / safeQuantity);
 
     lines.push({
       Amount: amount,
-      Description: trimToUndefined(item.description) ?? defaultLineDescription(document),
+      Description: trimToUndefined(item.name) ?? defaultLineDescription(document),
       DetailType: 'SalesItemLineDetail',
       SalesItemLineDetail: {
         ItemRef: { value: salesItemId },
@@ -424,10 +424,10 @@ function buildBillLines(document: Document, expenseAccountId: string): QuickBook
   const lines: QuickBooksBillLineInput[] = [];
 
   for (const item of document.lineItems ?? []) {
-    const amount = firstFinite(item.totalAmount, item.netAmount, item.unitPrice, 0);
+    const amount = firstFinite(item.totalAmount, item.netAmount, item.unitAmount, 0);
     lines.push({
       Amount: amount,
-      Description: trimToUndefined(item.description) ?? defaultLineDescription(document),
+      Description: trimToUndefined(item.name) ?? defaultLineDescription(document),
       DetailType: 'AccountBasedExpenseLineDetail',
       AccountBasedExpenseLineDetail: {
         AccountRef: { value: expenseAccountId },

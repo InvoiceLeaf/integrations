@@ -359,11 +359,11 @@ function buildLineItems(document: Document, accountCode?: string): XeroInvoiceLi
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = quantity === 0 ? 1 : quantity;
     const computedLineAmount = firstFinite(item.netAmount, item.totalAmount, 0);
-    const unitAmount = toFiniteNumber(item.unitPrice, computedLineAmount / safeQuantity);
+    const unitAmount = toFiniteNumber(item.unitAmount, computedLineAmount / safeQuantity);
     const taxAmount = Number.isFinite(item.taxAmount) ? (item.taxAmount as number) : undefined;
 
     lineItems.push({
-      Description: trimToUndefined(item.description) || defaultLineDescription(document),
+      Description: trimToUndefined(item.name) || defaultLineDescription(document),
       Quantity: safeQuantity,
       UnitAmount: unitAmount,
       AccountCode: accountCode,

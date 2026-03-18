@@ -622,13 +622,13 @@ function buildLineItems(document: Document): GetMyInvoicesDocumentMetadataInput[
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = quantity === 0 ? 1 : quantity;
     const totalGross =
-      firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitPrice, 0)) ??
+      firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ??
       0;
-    const unitNetPrice = toFiniteNumber(item.unitPrice, totalGross / safeQuantity);
+    const unitNetPrice = toFiniteNumber(item.unitAmount, totalGross / safeQuantity);
     const taxPercentage = toTaxRateFromAmounts(item.taxAmount, item.netAmount);
 
     result.push({
-      description: trimToUndefined(item.description),
+      description: trimToUndefined(item.name),
       quantity: safeQuantity,
       unit_net_price: roundTo2(unitNetPrice),
       tax_percentage: taxPercentage,

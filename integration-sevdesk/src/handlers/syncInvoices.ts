@@ -447,18 +447,18 @@ function buildLineItems(document: Document, runtimeDefaults: RuntimeDefaults): S
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = quantity === 0 ? 1 : quantity;
     const computedLineAmount = firstFinite(item.netAmount, item.totalAmount, 0);
-    const unitAmount = toFiniteNumber(item.unitPrice, computedLineAmount / safeQuantity);
+    const unitAmount = toFiniteNumber(item.unitAmount, computedLineAmount / safeQuantity);
     const taxRate =
       toTaxRateFromAmounts(item.taxAmount, item.netAmount) ??
       toFiniteNumber(document.taxItems?.[0]?.taxRate, runtimeDefaults.defaultTaxRate);
 
     lineItems.push({
-      name: trimToUndefined(item.description) || defaultLineDescription(document),
+      name: trimToUndefined(item.name) || defaultLineDescription(document),
       quantity: safeQuantity,
       price: unitAmount,
       taxRate,
       unityId: runtimeDefaults.unityId,
-      text: trimToUndefined(item.description),
+      text: trimToUndefined(item.name),
       positionNumber: index,
     });
   }
