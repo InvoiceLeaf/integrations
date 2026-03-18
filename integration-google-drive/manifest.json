@@ -9,7 +9,7 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "folder",
-  "category": "storage",
+  "category": "file-storage",
   "tags": ["google-drive", "drive", "files", "pdf"],
   "dataAccess": ["documents"],
   "externalAuth": [
