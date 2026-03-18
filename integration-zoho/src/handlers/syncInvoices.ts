@@ -248,7 +248,9 @@ async function resolveCustomerId(
   organizationId: string,
   document: Document
 ): Promise<string> {
-  const company = document.receiver ?? document.supplier;
+  const company = document.accountingType === 'PAYABLE'
+    ? (document.supplier ?? document.receiver)
+    : (document.receiver ?? document.supplier);
   const companyId = trimToUndefined(company?.id);
 
   if (companyId) {
