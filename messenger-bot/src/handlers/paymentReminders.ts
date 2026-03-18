@@ -4,11 +4,18 @@ export const buildPaymentReminderMessage = async (
   input: unknown,
   context: IntegrationContext
 ) => {
-  context.logger.info('Building Messenger payload for payment reminders', { input });
-  return {
-    success: true,
-    transport: 'messenger',
-    template: 'payment_reminder',
-    payload: input,
-  };
+  try {
+    context.logger.info('Building Messenger payload for payment reminders', { input });
+    return {
+      success: true,
+      transport: 'messenger',
+      template: 'payment_reminder',
+      payload: input,
+    };
+  } catch (error) {
+    context.logger.error('Failed to build payment reminder payload', {
+      error: (error as Error).message,
+    });
+    return { success: false, error: `Handler error: ${(error as Error).message}` };
+  }
 };

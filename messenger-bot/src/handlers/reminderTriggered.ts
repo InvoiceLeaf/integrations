@@ -22,6 +22,9 @@ type ReminderTriggeredOutput = {
   template: 'reminder_triggered';
   messageText: string;
   payload: ReminderTriggeredInput | Record<string, unknown>;
+} | {
+  success: false;
+  error: string;
 };
 
 function extractMessageText(
@@ -55,15 +58,22 @@ export const buildReminderTriggeredMessage = async (
   input: ReminderTriggeredInput | Record<string, unknown>,
   context: IntegrationContext
 ): Promise<ReminderTriggeredOutput> => {
-  context.logger.info('Building Messenger payload for reminder.triggered', {
-    input,
-  });
+  try {
+    context.logger.info('Building Messenger payload for reminder.triggered', {
+      input,
+    });
 
-  return {
-    success: true,
-    transport: 'messenger',
-    template: 'reminder_triggered',
-    messageText: extractMessageText(input),
-    payload: input,
-  };
+    return {
+      success: true,
+      transport: 'messenger',
+      template: 'reminder_triggered',
+      messageText: extractMessageText(input),
+      payload: input,
+    };
+  } catch (error) {
+    context.logger.error('Failed to build reminder.triggered payload', {
+      error: (error as Error).message,
+    });
+    return { success: false, error: `Handler error: ${(error as Error).message}` };
+  }
 };

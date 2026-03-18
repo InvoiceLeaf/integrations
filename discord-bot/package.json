@@ -13,10 +13,10 @@
     "lint": "eslint src/"
   },
   "peerDependencies": {
-    "@invoiceleaf/integration-sdk": "^1.0.0"
+    "@invoiceleaf/integration-sdk": "^1.6.0"
   },
   "devDependencies": {
-    "@invoiceleaf/integration-sdk": "^1.0.0",
+    "@invoiceleaf/integration-sdk": "^1.6.0",
     "typescript": "^5.4.0"
   },
   "engines": {

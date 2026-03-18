@@ -4,11 +4,23 @@ export const buildExportCompletedMessage = async (
   input: unknown,
   context: IntegrationContext
 ) => {
-  context.logger.info('Building WhatsApp payload for export.completed', { input });
-  return {
-    success: true,
-    transport: 'whatsapp',
-    template: 'export_completed',
-    payload: input,
-  };
+  try {
+    if (!input || typeof input !== 'object') {
+      context.logger.warn('Invalid input for export.completed', { input });
+      return { success: false, error: 'Invalid input: expected an object' };
+    }
+
+    context.logger.info('Building Whatsapp payload for export.completed', { input });
+    return {
+      success: true,
+      transport: 'whatsapp',
+      template: 'export_completed',
+      payload: input,
+    };
+  } catch (error) {
+    context.logger.error('Failed to build export.completed payload', {
+      error: (error as Error).message,
+    });
+    return { success: false, error: `Handler error: ${(error as Error).message}` };
+  }
 };

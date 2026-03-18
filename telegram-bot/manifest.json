@@ -91,6 +91,11 @@
       "requiresLinkedUser": true
     }
   ],
+  "limits": {
+    "rateLimit": 60,
+    "timeoutSeconds": 30,
+    "memoryMb": 128
+  },
   "configSchema": {
     "type": "object",
     "properties": {
