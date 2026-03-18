@@ -98,7 +98,7 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Quick
 
     while (hasMore && resultBase.processed < maxDocumentsPerRun) {
       const pageResult = await context.data.listDocuments({
-        fromDate,
+        startDate: Date.parse(fromDate),
         page,
         size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
