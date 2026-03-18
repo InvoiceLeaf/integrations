@@ -124,7 +124,8 @@ export const crawlPdfAttachments: IntegrationHandler<ScheduleInput, CrawlResult,
 
       for (const attachment of attachments) {
         const contentBase64 = attachment.contentBytes;
-        const checksum = createHash('sha256').update(contentBase64).digest('hex');
+        const fileBytes = Buffer.from(contentBase64, 'base64');
+        const checksum = createHash('sha256').update(fileBytes).digest('hex');
 
         const importItem: OutlookAttachment = {
           messageId: message.id,

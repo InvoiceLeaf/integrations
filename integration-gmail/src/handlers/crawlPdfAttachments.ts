@@ -120,7 +120,8 @@ export const crawlPdfAttachments: IntegrationHandler<ScheduleInput, CrawlResult,
       for (const attachment of attachments) {
         const payload = await client.getAttachment(detail.id, attachment.attachmentId);
         const contentBase64 = toBase64(payload.data);
-        const checksum = createHash('sha256').update(contentBase64).digest('hex');
+        const fileBytes = Buffer.from(contentBase64, 'base64');
+        const checksum = createHash('sha256').update(fileBytes).digest('hex');
 
         const importItem: GmailAttachment = {
           messageId: detail.id,

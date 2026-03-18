@@ -91,6 +91,7 @@ export const pullInvoicesFromSevdesk: IntegrationHandler<
     let offset = 0;
     let hasMore = true;
     const updateAfterUnix = Math.floor(new Date(fromDate).getTime() / 1000);
+    let latestSuccessfulTimestamp: string | null = null;
 
     while (hasMore && resultBase.processed < maxInvoicesPerRun) {
       const invoices = await client.listInvoices({
@@ -135,6 +136,14 @@ export const pullInvoicesFromSevdesk: IntegrationHandler<
           } else {
             resultBase.skipped += 1;
           }
+          if (updateIso) {
+            const updateMs = Date.parse(updateIso);
+            if (Number.isFinite(updateMs)) {
+              if (latestSuccessfulTimestamp === null || updateMs > Date.parse(latestSuccessfulTimestamp)) {
+                latestSuccessfulTimestamp = updateIso;
+              }
+            }
+          }
         } catch (error) {
           resultBase.failed += 1;
           const message = toErrorMessage(error);
@@ -157,10 +166,11 @@ export const pullInvoicesFromSevdesk: IntegrationHandler<
 
     const completedAt = new Date().toISOString();
     let checkpointUpdated = false;
-    if (resultBase.failed === 0) {
+    const checkpointTimestamp = resultBase.failed === 0 ? completedAt : latestSuccessfulTimestamp;
+    if (checkpointTimestamp !== null) {
       try {
         await context.state.set<SevdeskInboundSyncState>(INBOUND_SYNC_STATE_KEY, {
-          lastInboundSyncAt: completedAt,
+          lastInboundSyncAt: checkpointTimestamp,
         });
         checkpointUpdated = true;
       } catch (stateError) {
