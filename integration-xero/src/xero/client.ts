@@ -238,7 +238,15 @@ async function requestWithRetry<T>(
         return {} as T;
       }
 
-      return JSON.parse(body) as T;
+      try {
+        return JSON.parse(body) as T;
+      } catch (parseError) {
+        throw new XeroApiError(
+          `Failed to parse Xero API response: ${String(parseError)}`,
+          response.status,
+          body.slice(0, 500)
+        );
+      }
     } catch (error) {
       lastError = error as Error;
       if (

@@ -9,14 +9,14 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint src/"
+    "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
     "@invoiceleaf/integration-sdk": "^1.6.0"
   },
   "devDependencies": {
     "@invoiceleaf/integration-sdk": "^1.6.0",
+    "@types/node": "^22.10.0",
     "typescript": "^5.4.0"
   },
   "engines": {
