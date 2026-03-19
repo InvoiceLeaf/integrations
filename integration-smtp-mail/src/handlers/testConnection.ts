@@ -6,7 +6,7 @@ export const testConnection: IntegrationHandler<unknown, HandlerResult, SmtpMail
   context: IntegrationContext<SmtpMailConfig>
 ): Promise<HandlerResult> => {
   try {
-    await context.email.testSmtpImapConnection({
+    const result = await context.email.testSmtpImapConnection({
       smtpHost: context.config.smtpHost,
       smtpPort: context.config.smtpPort,
       smtpSecure: context.config.smtpSecure,
@@ -19,6 +19,18 @@ export const testConnection: IntegrationHandler<unknown, HandlerResult, SmtpMail
       imapPassword: context.config.imapPassword,
       imapFolder: context.config.imapFolder || 'INBOX',
     });
+
+    if (!result.smtp || !result.imap) {
+      const errors: string[] = [];
+      if (!result.smtp) errors.push(`SMTP: ${result.smtpError || 'connection failed'}`);
+      if (!result.imap) errors.push(`IMAP: ${result.imapError || 'connection failed'}`);
+      const detail = errors.join('; ');
+      context.logger.error('Connection test failed', { smtpOk: result.smtp, imapOk: result.imap, detail });
+      return {
+        success: false,
+        error: `Connection test failed: ${detail}`,
+      };
+    }
 
     return {
       success: true,
