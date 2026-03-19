@@ -119,7 +119,12 @@ async function importSingleFile(
       fileId: file.id,
       name: file.name,
     });
-    await context.state.delete(stateKey).catch(() => {});
+    await context.state.delete(stateKey).catch((err) => {
+      context.logger.warn('Failed to clear state key for file with no path', {
+        stateKey,
+        error: toErrorMessage(err),
+      });
+    });
     return 'skipped';
   }
 
@@ -134,7 +139,12 @@ async function importSingleFile(
         estimatedSizeBytes,
         maxSizeBytes: MAX_FILE_SIZE_BYTES,
       });
-      await context.state.delete(stateKey).catch(() => {});
+      await context.state.delete(stateKey).catch((err) => {
+        context.logger.warn('Failed to clear state key for oversized file', {
+          stateKey,
+          error: toErrorMessage(err),
+        });
+      });
       return 'skipped';
     }
 
@@ -197,7 +207,12 @@ async function importSingleFile(
         error: toErrorMessage(deleteError),
       });
       // If delete fails, overwrite with a short TTL so it auto-expires
-      await context.state.set(stateKey, 'failed', { ttlSeconds: 300 }).catch(() => {});
+      await context.state.set(stateKey, 'failed', { ttlSeconds: 300 }).catch((setError) => {
+        context.logger.error('Failed to set short TTL fallback on state key — file will be permanently skipped until state expires or is manually cleared', {
+          stateKey,
+          error: toErrorMessage(setError),
+        });
+      });
     }
     return 'failed';
   }
