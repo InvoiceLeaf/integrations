@@ -1,4 +1,5 @@
 import type { Document, IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { firstFinite } from '@invoiceleaf/integration-sdk';
 import type {
   SyncFailure,
   SyncInvoicesResult,
@@ -350,7 +351,7 @@ function buildLineItems(
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
-    const amount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ?? 0;
+    const amount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0))!;
     const rate = toFiniteNumber(item.unitAmount, amount / safeQuantity);
 
     lineItems.push({
@@ -458,15 +459,6 @@ function toFiniteNumber(value: number | undefined, fallback: number): number {
     return value as number;
   }
   return fallback;
-}
-
-function firstFinite(...values: Array<number | undefined>): number | undefined {
-  for (const value of values) {
-    if (Number.isFinite(value)) {
-      return value as number;
-    }
-  }
-  return undefined;
 }
 
 function trimToUndefined(value: string | undefined): string | undefined {

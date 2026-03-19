@@ -1,4 +1,5 @@
 import type { Document, IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { firstFinite } from '@invoiceleaf/integration-sdk';
 import type {
   SevdeskIntegrationConfig,
   SevdeskSyncState,
@@ -470,7 +471,7 @@ function buildLineItems(document: Document, runtimeDefaults: RuntimeDefaults): S
   for (const [index, item] of (document.lineItems ?? []).entries()) {
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
-    const computedLineAmount = firstFinite(item.netAmount, item.totalAmount, 0) ?? 0;
+    const computedLineAmount = firstFinite(item.netAmount, item.totalAmount, 0)!;
     const unitAmount = toFiniteNumber(item.unitAmount, computedLineAmount / safeQuantity);
     const taxRate =
       toTaxRateFromAmounts(item.taxAmount, item.netAmount) ??
@@ -656,15 +657,6 @@ function toFiniteNumber(value: number | undefined, fallback: number | undefined)
     return value as number;
   }
   return fallback ?? 0;
-}
-
-function firstFinite(...values: Array<number | undefined>): number | undefined {
-  for (const value of values) {
-    if (Number.isFinite(value)) {
-      return value as number;
-    }
-  }
-  return undefined;
 }
 
 function trimToUndefined(value: string | undefined): string | undefined {

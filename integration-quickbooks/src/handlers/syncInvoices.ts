@@ -1,4 +1,5 @@
 import type { Document, IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { firstFinite } from '@invoiceleaf/integration-sdk';
 import type {
   QuickBooksIntegrationConfig,
   QuickBooksSyncState,
@@ -407,7 +408,7 @@ function buildInvoiceLines(document: Document, salesItemId: string): QuickBooksI
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
-    const rawAmount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ?? 0;
+    const rawAmount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0))!;
     const amount = Math.abs(rawAmount);
     const unitPrice = Math.abs(toFiniteNumber(item.unitAmount, amount / safeQuantity));
 
@@ -454,7 +455,7 @@ function buildBillLines(document: Document, expenseAccountId: string): QuickBook
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
-    const rawAmount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ?? 0;
+    const rawAmount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0))!;
     const amount = Math.abs(rawAmount);
     lines.push({
       Amount: amount,
@@ -568,15 +569,6 @@ function toFiniteNumber(value: number | undefined, fallback: number): number {
     return value as number;
   }
   return fallback;
-}
-
-function firstFinite(...values: Array<number | undefined>): number | undefined {
-  for (const value of values) {
-    if (Number.isFinite(value)) {
-      return value as number;
-    }
-  }
-  return undefined;
 }
 
 function trimToUndefined(value: string | undefined): string | undefined {

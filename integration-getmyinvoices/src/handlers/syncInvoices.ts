@@ -1,4 +1,5 @@
 import type { Document, IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { firstFinite } from '@invoiceleaf/integration-sdk';
 import type {
   GetMyInvoicesDocumentType,
   GetMyInvoicesIntegrationConfig,
@@ -627,8 +628,7 @@ function buildLineItems(document: Document): GetMyInvoicesDocumentMetadataInput[
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
     const totalGross =
-      firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ??
-      0;
+      firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0))!;
     const unitNetPrice = toFiniteNumber(item.unitAmount, totalGross / safeQuantity);
     const taxPercentage = toTaxRateFromAmounts(item.taxAmount, item.netAmount);
 
@@ -787,15 +787,6 @@ function toFiniteNumber(value: number | undefined, fallback: number): number {
     return value as number;
   }
   return fallback;
-}
-
-function firstFinite(...values: Array<number | undefined>): number | undefined {
-  for (const value of values) {
-    if (Number.isFinite(value)) {
-      return value as number;
-    }
-  }
-  return undefined;
 }
 
 function uniqueNumbers(values: Array<number | undefined>): number[] {
