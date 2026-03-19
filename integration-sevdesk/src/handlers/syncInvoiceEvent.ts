@@ -1,4 +1,4 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, DocumentEventInput } from '@invoiceleaf/integration-sdk';
 import type { SevdeskIntegrationConfig, HandlerResult } from '../types.js';
 import type { SevdeskContact } from '../sevdesk/client.js';
 import { SevdeskApiError, SevdeskClient } from '../sevdesk/client.js';
@@ -10,13 +10,6 @@ import {
   syncSingleDocument,
 } from './syncInvoices.js';
 
-interface DocumentEventInput {
-  documentId?: string;
-  document?: {
-    id?: string;
-  };
-}
-
 export const syncInvoiceEvent: IntegrationHandler<
   DocumentEventInput,
   HandlerResult,
@@ -25,6 +18,13 @@ export const syncInvoiceEvent: IntegrationHandler<
   input,
   context: IntegrationContext<SevdeskIntegrationConfig>
 ): Promise<HandlerResult> => {
+  if (context.config.enableEventSync === false) {
+    return {
+      success: true,
+      message: 'sevDesk event sync is disabled by configuration.',
+    };
+  }
+
   const documentId = input?.documentId ?? input?.document?.id;
   if (!documentId) {
     return {
@@ -100,18 +100,20 @@ export const syncInvoiceEvent: IntegrationHandler<
     });
 
     // Best effort only; sync result should reflect the primary sevDesk operation outcome.
-    void context.data.patchDocumentIntegrationMeta({
-      documentId,
-      system: SYSTEM,
-      status: 'failed',
-      lastSyncedAt: new Date().toISOString(),
-      errorSummary: message.slice(0, 500),
-    }).catch((metaError) => {
+    try {
+      await context.data.patchDocumentIntegrationMeta({
+        documentId,
+        system: SYSTEM,
+        status: 'failed',
+        lastSyncedAt: new Date().toISOString(),
+        errorSummary: message.slice(0, 500),
+      });
+    } catch (metaError) {
       context.logger.warn('Failed to patch sync metadata after sevDesk event sync error', {
         documentId,
         error: toErrorMessage(metaError),
       });
-    });
+    }
 
     return {
       success: false,
