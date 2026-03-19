@@ -211,7 +211,7 @@ export class QuickBooksClient {
   }
 
   private async request<T>(
-    method: 'GET' | 'POST',
+    method: string,
     path: string,
     body?: unknown,
     query?: Record<string, string>
@@ -249,7 +249,7 @@ export class QuickBooksClient {
 
 const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429, 502, 503]);
 
-async function requestWithRetry<T>(url: string, init: RequestInit, method: 'GET' | 'POST'): Promise<T> {
+async function requestWithRetry<T>(url: string, init: RequestInit, method: string): Promise<T> {
   let lastError: Error | null = null;
   const isIdempotent = method === 'GET';
 
