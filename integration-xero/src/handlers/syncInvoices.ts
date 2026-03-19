@@ -380,7 +380,7 @@ function buildLineItems(document: Document, accountCode?: string): XeroInvoiceLi
 
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
-    const safeQuantity = quantity === 0 ? 1 : quantity;
+    const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
     const computedLineAmount = firstFinite(item.netAmount, item.totalAmount, 0) ?? 0;
     const unitAmount = toFiniteNumber(item.unitAmount, computedLineAmount / safeQuantity);
     const taxAmount = Number.isFinite(item.taxAmount) ? (item.taxAmount as number) : undefined;

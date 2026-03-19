@@ -94,7 +94,15 @@ export const syncInvoices: IntegrationHandler<
     let fromDate = fallbackFromDate;
     try {
       const syncState = await context.state.get<GetMyInvoicesSyncState>(OUTBOUND_SYNC_STATE_KEY);
-      fromDate = syncState?.lastSuccessfulSyncAt ?? fallbackFromDate;
+      const checkpointValue = syncState?.lastSuccessfulSyncAt;
+      if (checkpointValue && Number.isFinite(Date.parse(checkpointValue))) {
+        fromDate = checkpointValue;
+      } else if (checkpointValue) {
+        context.logger.warn('Corrupted sync checkpoint value — falling back to lookback window.', {
+          key: OUTBOUND_SYNC_STATE_KEY,
+          corruptedValue: checkpointValue,
+        });
+      }
     } catch (stateError) {
       context.logger.warn(
         'Could not read GetMyInvoices outbound sync checkpoint. Using fallback lookback window.',
@@ -130,8 +138,9 @@ export const syncInvoices: IntegrationHandler<
     let hasMore = true;
 
     while (hasMore && resultBase.processed < maxDocumentsPerRun) {
+      const parsedStartDate = Date.parse(fromDate);
       const pageResult = await context.data.listDocuments({
-        startDate: Date.parse(fromDate),
+        startDate: Number.isFinite(parsedStartDate) ? parsedStartDate : Date.parse(fallbackFromDate),
         page,
         size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
@@ -364,7 +373,7 @@ async function resolveCompanyUid(
     return undefined;
   }
 
-  const cacheKey = companyId ?? `name:${normalizeString(companyName)}`;
+  const cacheKey = companyId ?? buildGmiCompanyCacheKey(company, companyName);
   const cached = companyCache.byKey.get(cacheKey);
   if (cached?.companyUid) {
     return cached.companyUid;
@@ -417,17 +426,17 @@ async function resolveCompanyUid(
     return undefined;
   }
 
-  const countryUid = await resolveCountryUid(client, company?.address?.country, runtimeDefaults, countryCache);
+  const countryUid = await resolveCountryUid(client, company?.country, runtimeDefaults, countryCache);
   const created = await client.createCompany({
     name: companyName,
     countryUid,
-    street: trimToUndefined(company?.address?.street),
-    zip: trimToUndefined(company?.address?.postalCode),
-    city: trimToUndefined(company?.address?.city),
+    street: trimToUndefined(company?.street),
+    zip: trimToUndefined(company?.zip),
+    city: trimToUndefined(company?.city),
     email: trimToUndefined(company?.email),
     phone: trimToUndefined(company?.phone),
     taxNumber: trimToUndefined(company?.taxId),
-    vatId: trimToUndefined(company?.taxId),
+    vatId: trimToUndefined(company?.vatId),
     url: trimToUndefined(company?.website),
   });
 
@@ -484,13 +493,9 @@ async function resolveCountryUid(
   runtimeDefaults: RuntimeDefaults,
   countryCache: CountryLookupCache
 ): Promise<number | undefined> {
-  if (runtimeDefaults.defaultCountryUid) {
-    return runtimeDefaults.defaultCountryUid;
-  }
-
   const normalized = normalizeString(trimToUndefined(countryName));
   if (!normalized) {
-    return undefined;
+    return runtimeDefaults.defaultCountryUid;
   }
 
   await ensureCountryCacheLoaded(client, countryCache);
@@ -505,7 +510,7 @@ async function resolveCountryUid(
     return byCode.countryUid;
   }
 
-  return undefined;
+  return runtimeDefaults.defaultCountryUid;
 }
 
 async function ensureCountryCacheLoaded(
@@ -602,7 +607,7 @@ function mapPaymentStatus(
 }
 
 function collectTaxRates(document: Document): number[] | undefined {
-  const fromTaxItems = uniqueNumbers((document.taxItems ?? []).map((item) => item.taxRate));
+  const fromTaxItems = uniqueNumbers((document.taxItems ?? []).map((item) => item.taxPercentage));
   if (fromTaxItems.length > 0) {
     return fromTaxItems;
   }
@@ -620,7 +625,7 @@ function buildLineItems(document: Document): GetMyInvoicesDocumentMetadataInput[
 
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
-    const safeQuantity = quantity === 0 ? 1 : quantity;
+    const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
     const totalGross =
       firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ??
       0;
@@ -654,6 +659,20 @@ function buildFallbackFileName(document: Document): string {
 
   const safeDocumentId = document.id.replace(/[^a-zA-Z0-9-_]/g, '_');
   return `document-${safeDocumentId}.pdf`;
+}
+
+function buildGmiCompanyCacheKey(
+  company: Document['supplier'] | Document['receiver'] | undefined,
+  companyName: string
+): string {
+  const parts = [
+    normalizeString(companyName),
+    normalizeString(trimToUndefined(company?.taxId)),
+    normalizeString(trimToUndefined(company?.vatId)),
+    normalizeString(trimToUndefined(company?.street)),
+    normalizeString(trimToUndefined(company?.zip)),
+  ].filter(Boolean);
+  return `name:${parts.join('|')}`;
 }
 
 function pickCompanyForDocument(document: Document): Document['supplier'] | Document['receiver'] {

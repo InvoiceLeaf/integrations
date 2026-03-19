@@ -65,8 +65,24 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, ZohoI
       };
     }
 
-    const syncState = await context.state.get<ZohoSyncState>(SYNC_STATE_KEY);
-    const fromDate = syncState?.lastSuccessfulSyncAt ?? fallbackFromDate;
+    let fromDate = fallbackFromDate;
+    try {
+      const syncState = await context.state.get<ZohoSyncState>(SYNC_STATE_KEY);
+      const checkpointValue = syncState?.lastSuccessfulSyncAt;
+      if (checkpointValue && Number.isFinite(Date.parse(checkpointValue))) {
+        fromDate = checkpointValue;
+      } else if (checkpointValue) {
+        context.logger.warn('Corrupted sync checkpoint value — falling back to lookback window.', {
+          key: SYNC_STATE_KEY,
+          corruptedValue: checkpointValue,
+        });
+      }
+    } catch (stateError) {
+      context.logger.warn('Could not read Zoho sync checkpoint. Using fallback lookback window.', {
+        key: SYNC_STATE_KEY,
+        error: stateError instanceof Error ? stateError.message : String(stateError),
+      });
+    }
     resultBase.fromDate = fromDate;
 
     const accessToken = await context.credentials.getAccessToken(SYSTEM);
@@ -85,8 +101,9 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, ZohoI
     let hasMore = true;
 
     while (hasMore && resultBase.processed < maxDocumentsPerRun) {
+      const parsedStartDate = Date.parse(fromDate);
       const pageResult = await context.data.listDocuments({
-        startDate: Date.parse(fromDate),
+        startDate: Number.isFinite(parsedStartDate) ? parsedStartDate : Date.parse(fallbackFromDate),
         page,
         size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
@@ -209,10 +226,16 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, ZohoI
     const completedAt = new Date().toISOString();
     let checkpointUpdated = false;
     if (resultBase.failed === 0) {
-      await context.state.set<ZohoSyncState>(SYNC_STATE_KEY, {
-        lastSuccessfulSyncAt: completedAt,
-      });
-      checkpointUpdated = true;
+      try {
+        await context.state.set<ZohoSyncState>(SYNC_STATE_KEY, {
+          lastSuccessfulSyncAt: completedAt,
+        });
+        checkpointUpdated = true;
+      } catch (checkpointError) {
+        context.logger.warn('Failed to save sync checkpoint — documents were synced successfully', {
+          error: checkpointError instanceof Error ? checkpointError.message : String(checkpointError),
+        });
+      }
     }
 
     return {
@@ -325,8 +348,8 @@ function buildLineItems(
 
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
-    const safeQuantity = quantity === 0 ? 1 : quantity;
-    const amount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0));
+    const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
+    const amount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ?? 0;
     const rate = toFiniteNumber(item.unitAmount, amount / safeQuantity);
 
     lineItems.push({
@@ -342,7 +365,7 @@ function buildLineItems(
     return lineItems;
   }
 
-  const fallbackAmount = firstFinite(document.totalAmount, document.netAmount, document.amountDue, 0);
+  const fallbackAmount = firstFinite(document.totalAmount, document.netAmount, document.amountDue, 0) ?? 0;
   return [
     {
       item_id: itemId,
@@ -427,13 +450,13 @@ function toFiniteNumber(value: number | undefined, fallback: number): number {
   return fallback;
 }
 
-function firstFinite(...values: Array<number | undefined>): number {
+function firstFinite(...values: Array<number | undefined>): number | undefined {
   for (const value of values) {
     if (Number.isFinite(value)) {
       return value as number;
     }
   }
-  return 0;
+  return undefined;
 }
 
 function trimToUndefined(value: string | undefined): string | undefined {
