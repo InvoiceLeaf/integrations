@@ -534,7 +534,8 @@ function buildRequestUrl(
     if (value === undefined || value === null) {
       continue;
     }
-    queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+    const encoded = typeof value === 'boolean' ? (value ? '1' : '0') : String(value);
+    queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(encoded)}`);
   }
 
   if (queryParts.length > 0) {
