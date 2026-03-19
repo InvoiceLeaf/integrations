@@ -283,13 +283,20 @@ export interface AttachmentField {
 
 /**
  * Input for document-related event handlers.
+ *
+ * Aligned with SDK's DocumentEventInput shape (see integration-sdk/src/helpers/defineHandler.ts).
+ * TODO: Replace with `extends DocumentEventInput` from SDK once DocumentEventInput is published
+ * in the compiled @invoiceleaf/integration-sdk package (see INV-707).
  */
 export interface DocumentEventInput {
+  /** The document ID — required for notification handlers. */
   documentId: string;
-  document: Document;
+  /** Nested document reference (SDK compat). */
+  document?: {
+    id?: string;
+  };
+  /** Space context for the event. */
   spaceId?: string;
-  userId?: string;
-  timestamp?: string;
 }
 
 /**
