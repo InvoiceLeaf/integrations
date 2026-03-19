@@ -43,9 +43,25 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, XeroI
     1000
   );
 
-  const syncState = await context.state.get<XeroSyncState>(SYNC_STATE_KEY);
   const fallbackFromDate = new Date(Date.now() - lookbackHours * 60 * 60 * 1000).toISOString();
-  const fromDate = syncState?.lastSuccessfulSyncAt ?? fallbackFromDate;
+  let fromDate = fallbackFromDate;
+  try {
+    const syncState = await context.state.get<XeroSyncState>(SYNC_STATE_KEY);
+    const checkpointValue = syncState?.lastSuccessfulSyncAt;
+    if (checkpointValue && Number.isFinite(Date.parse(checkpointValue))) {
+      fromDate = checkpointValue;
+    } else if (checkpointValue) {
+      context.logger.warn('Corrupted sync checkpoint value — falling back to lookback window.', {
+        key: SYNC_STATE_KEY,
+        corruptedValue: checkpointValue,
+      });
+    }
+  } catch (stateError) {
+    context.logger.warn('Could not read Xero sync checkpoint. Using fallback lookback window.', {
+      key: SYNC_STATE_KEY,
+      error: stateError instanceof Error ? stateError.message : String(stateError),
+    });
+  }
 
   const resultBase: Omit<
     SyncInvoicesResult,
@@ -85,8 +101,9 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, XeroI
     let hasMore = true;
 
     while (hasMore && resultBase.processed < maxDocumentsPerRun) {
+      const parsedStartDate = Date.parse(fromDate);
       const pageResult = await context.data.listDocuments({
-        startDate: Date.parse(fromDate),
+        startDate: Number.isFinite(parsedStartDate) ? parsedStartDate : Date.parse(fallbackFromDate),
         page,
         size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
@@ -164,10 +181,16 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, XeroI
     const completedAt = new Date().toISOString();
     let checkpointUpdated = false;
     if (resultBase.failed === 0) {
-      await context.state.set<XeroSyncState>(SYNC_STATE_KEY, {
-        lastSuccessfulSyncAt: completedAt,
-      });
-      checkpointUpdated = true;
+      try {
+        await context.state.set<XeroSyncState>(SYNC_STATE_KEY, {
+          lastSuccessfulSyncAt: completedAt,
+        });
+        checkpointUpdated = true;
+      } catch (checkpointError) {
+        context.logger.warn('Failed to save sync checkpoint — documents were synced successfully', {
+          error: checkpointError instanceof Error ? checkpointError.message : String(checkpointError),
+        });
+      }
     }
 
     return {
@@ -358,7 +381,7 @@ function buildLineItems(document: Document, accountCode?: string): XeroInvoiceLi
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = quantity === 0 ? 1 : quantity;
-    const computedLineAmount = firstFinite(item.netAmount, item.totalAmount, 0);
+    const computedLineAmount = firstFinite(item.netAmount, item.totalAmount, 0) ?? 0;
     const unitAmount = toFiniteNumber(item.unitAmount, computedLineAmount / safeQuantity);
     const taxAmount = Number.isFinite(item.taxAmount) ? (item.taxAmount as number) : undefined;
 
@@ -379,7 +402,7 @@ function buildLineItems(document: Document, accountCode?: string): XeroInvoiceLi
     return filtered;
   }
 
-  const amount = firstFinite(document.netAmount, document.totalAmount, document.amountDue, 0);
+  const amount = firstFinite(document.netAmount, document.totalAmount, document.amountDue, 0) ?? 0;
   return [
     {
       Description: defaultLineDescription(document),
@@ -468,13 +491,13 @@ function toFiniteNumber(value: number | undefined, fallback: number | undefined)
   return fallback ?? 0;
 }
 
-function firstFinite(...values: Array<number | undefined>): number {
+function firstFinite(...values: Array<number | undefined>): number | undefined {
   for (const value of values) {
     if (Number.isFinite(value)) {
       return value as number;
     }
   }
-  return 0;
+  return undefined;
 }
 
 function trimToUndefined(value: string | undefined): string | undefined {
