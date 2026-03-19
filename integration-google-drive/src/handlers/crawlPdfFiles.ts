@@ -64,8 +64,9 @@ export const crawlPdfFiles: IntegrationHandler<
     const files = await client.listPdfFiles(folderId, recursive, maxFiles);
     result.scannedFiles = files.length;
 
+    const errors: string[] = [];
     for (const file of files) {
-      const status = await importSingleFile(context, client, file, statePrefix, dedupeTtlSeconds);
+      const status = await importSingleFile(context, client, file, statePrefix, dedupeTtlSeconds, errors);
       if (status === 'imported') {
         result.imported += 1;
       } else if (status === 'duplicate') {
@@ -75,6 +76,9 @@ export const crawlPdfFiles: IntegrationHandler<
       } else {
         result.failed += 1;
       }
+    }
+    if (errors.length > 0) {
+      result.errors = errors;
     }
   } catch (error) {
     result.success = false;
@@ -99,7 +103,8 @@ async function importSingleFile(
   client: GoogleDriveClient,
   file: DrivePdfFile,
   statePrefix: string,
-  dedupeTtlSeconds: number
+  dedupeTtlSeconds: number,
+  errors: string[]
 ): Promise<'imported' | 'duplicate' | 'skipped' | 'failed'> {
   const stateKey = buildFileStateKey(statePrefix, file);
   try {
@@ -140,12 +145,7 @@ async function importSingleFile(
         estimatedSizeBytes,
         maxSizeBytes: MAX_FILE_SIZE_BYTES,
       });
-      await context.state.delete(stateKey).catch((err) => {
-        context.logger.warn('Failed to clear state key for oversized file', {
-          stateKey,
-          error: toErrorMessage(err),
-        });
-      });
+      await clearStateOrFallback(context, stateKey, `google-drive:${file.id}:oversized`, errors);
       return 'skipped';
     }
 
@@ -199,22 +199,33 @@ async function importSingleFile(
       fileName: file.name,
       error: toErrorMessage(error),
     });
-    try {
-      await context.state.delete(stateKey);
-    } catch (deleteError) {
-      context.logger.warn('Failed to clear pending state key after import failure; setting short TTL', {
-        stateKey,
-        error: toErrorMessage(deleteError),
-      });
-      // If delete fails, overwrite with a short TTL so it auto-expires
-      await context.state.set(stateKey, 'failed', { ttlSeconds: 300 }).catch((setError) => {
-        context.logger.error('Failed to set short TTL fallback on state key — file will be permanently skipped until state expires or is manually cleared', {
-          stateKey,
-          error: toErrorMessage(setError),
-        });
-      });
-    }
+    await clearStateOrFallback(context, stateKey, `google-drive:${file.id}:import-failed`, errors);
     return 'failed';
+  }
+}
+
+async function clearStateOrFallback(
+  context: IntegrationContext<GoogleDriveIntegrationConfig>,
+  stateKey: string,
+  fileRef: string,
+  errors: string[]
+): Promise<void> {
+  try {
+    await context.state.delete(stateKey);
+  } catch (deleteError) {
+    context.logger.warn('Failed to delete state key; attempting short TTL fallback', {
+      stateKey,
+      error: toErrorMessage(deleteError),
+    });
+    try {
+      await context.state.set(stateKey, 'failed', { ttlSeconds: 300 });
+    } catch (setError) {
+      context.logger.error('State key permanently locked — delete and TTL fallback both failed', {
+        stateKey,
+        error: toErrorMessage(setError),
+      });
+      errors.push(`${fileRef}: state key "${stateKey}" locked — manual cleanup required`);
+    }
   }
 }
 

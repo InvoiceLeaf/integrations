@@ -39,6 +39,7 @@ export interface CrawlResult extends HandlerResult {
   duplicates: number;
   skipped: number;
   failed: number;
+  errors?: string[];
 }
 
 export interface ListDirectoriesInput {
