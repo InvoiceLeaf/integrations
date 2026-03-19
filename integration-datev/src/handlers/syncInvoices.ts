@@ -65,7 +65,15 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Datev
     let fromDate = fallbackFromDate;
     try {
       const state = await context.state.get<DatevSyncState>(SYNC_STATE_KEY);
-      fromDate = state?.lastSuccessfulSyncAt ?? fallbackFromDate;
+      const checkpointValue = state?.lastSuccessfulSyncAt;
+      if (checkpointValue && Number.isFinite(Date.parse(checkpointValue))) {
+        fromDate = checkpointValue;
+      } else if (checkpointValue) {
+        context.logger.warn('Corrupted sync checkpoint value — falling back to lookback window.', {
+          key: SYNC_STATE_KEY,
+          corruptedValue: checkpointValue,
+        });
+      }
     } catch (stateError) {
       context.logger.warn('Could not read DATEV sync checkpoint; using fallback lookback window.', {
         key: SYNC_STATE_KEY,

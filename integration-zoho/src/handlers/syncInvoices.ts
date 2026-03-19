@@ -365,7 +365,12 @@ function buildLineItems(
     return lineItems;
   }
 
-  const fallbackAmount = firstFinite(document.totalAmount, document.netAmount, document.amountDue, 0) ?? 0;
+  const fallbackAmount = firstFinite(document.totalAmount, document.netAmount, document.amountDue);
+  if (fallbackAmount === undefined || fallbackAmount === 0) {
+    throw new Error(
+      `Document ${document.id} has no line items and no valid amount (totalAmount, netAmount, amountDue are all missing or zero). Cannot create a Zoho invoice with $0.`
+    );
+  }
   return [
     {
       item_id: itemId,

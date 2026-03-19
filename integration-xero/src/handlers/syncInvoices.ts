@@ -402,7 +402,12 @@ function buildLineItems(document: Document, accountCode?: string): XeroInvoiceLi
     return filtered;
   }
 
-  const amount = firstFinite(document.netAmount, document.totalAmount, document.amountDue, 0) ?? 0;
+  const amount = firstFinite(document.netAmount, document.totalAmount, document.amountDue);
+  if (amount === undefined || amount === 0) {
+    throw new Error(
+      `Document ${document.id} has no line items and no valid amount (netAmount, totalAmount, amountDue are all missing or zero). Cannot create a Xero invoice with $0.`
+    );
+  }
   return [
     {
       Description: defaultLineDescription(document),
