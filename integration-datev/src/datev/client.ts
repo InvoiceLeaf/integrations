@@ -391,7 +391,7 @@ function normalizePath(path: string): string {
 }
 
 function backoffMs(attempt: number): number {
-  return Math.min(2_500, 250 * 2 ** (attempt - 1));
+  return Math.min(2000, 250 * 2 ** (attempt - 1));
 }
 
 function sleep(ms: number): Promise<void> {
@@ -402,7 +402,7 @@ function toBoundedInt(value: number | undefined, fallback: number, min: number, 
   if (!Number.isFinite(value)) {
     return fallback;
   }
-  const rounded = Math.round(value as number);
+  const rounded = Math.floor(value as number);
   if (rounded < min) {
     return min;
   }

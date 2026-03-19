@@ -104,7 +104,7 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Datev
 
         resultBase.processed += 1;
 
-        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false, context.config.requireProcessedDocuments ?? true)) {
+        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false, context.config.requireProcessedDocuments ?? false)) {
           resultBase.skipped += 1;
           continue;
         }
@@ -335,7 +335,7 @@ function toBoundedInt(value: number | undefined, fallback: number, min: number, 
   if (!Number.isFinite(value)) {
     return fallback;
   }
-  const rounded = Math.round(value as number);
+  const rounded = Math.floor(value as number);
   if (rounded < min) {
     return min;
   }

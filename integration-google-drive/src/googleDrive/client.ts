@@ -278,6 +278,7 @@ export class GoogleDriveClient {
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
         Accept: 'application/json',
+        'User-Agent': 'InvoiceLeaf integration-google-drive/1.0',
       },
       body,
     }, method);
@@ -302,6 +303,7 @@ export class GoogleDriveClient {
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
         Accept: 'application/json',
+        'User-Agent': 'InvoiceLeaf integration-google-drive/1.0',
         ...headers,
       },
       body,

@@ -249,6 +249,7 @@ async function rpc<T>(
       Authorization: `Bearer ${accessToken}`,
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      'User-Agent': 'InvoiceLeaf integration-dropbox/1.0',
     },
     body: body === null ? 'null' : JSON.stringify(body),
   };
@@ -269,6 +270,7 @@ async function content<T>(
     method,
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      'User-Agent': 'InvoiceLeaf integration-dropbox/1.0',
       ...headers,
     },
     body,

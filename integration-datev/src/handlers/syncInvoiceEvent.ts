@@ -42,7 +42,7 @@ export const syncInvoiceEvent: IntegrationHandler<
       };
     }
 
-    if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false, context.config.requireProcessedDocuments ?? true)) {
+    if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false, context.config.requireProcessedDocuments ?? false)) {
       return {
         success: true,
         message: `Document ${documentId} is not syncable and was skipped.`,

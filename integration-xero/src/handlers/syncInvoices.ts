@@ -186,9 +186,10 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, XeroI
           lastSuccessfulSyncAt: completedAt,
         });
         checkpointUpdated = true;
-      } catch (checkpointError) {
-        context.logger.warn('Failed to save sync checkpoint — documents were synced successfully', {
-          error: checkpointError instanceof Error ? checkpointError.message : String(checkpointError),
+      } catch (stateError) {
+        context.logger.warn('Could not persist Xero sync checkpoint.', {
+          key: SYNC_STATE_KEY,
+          error: toErrorMessage(stateError),
         });
       }
     }

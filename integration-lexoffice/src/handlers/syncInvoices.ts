@@ -192,9 +192,10 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Lexof
           lastSuccessfulSyncAt: completedAt,
         });
         checkpointUpdated = true;
-      } catch (checkpointError) {
-        context.logger.warn('Failed to save sync checkpoint — documents were imported successfully', {
-          error: checkpointError instanceof Error ? checkpointError.message : String(checkpointError),
+      } catch (stateError) {
+        context.logger.warn('Could not persist lexoffice sync checkpoint.', {
+          key: SYNC_STATE_KEY,
+          error: toErrorMessage(stateError),
         });
       }
     }
