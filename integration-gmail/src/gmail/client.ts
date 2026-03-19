@@ -1,5 +1,6 @@
 const GMAIL_BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
 const MAX_REQUEST_ATTEMPTS = 3;
 
 interface GmailMessageListResponse {
@@ -188,12 +189,13 @@ export class GmailClient {
       body,
     };
 
-    return requestWithRetry<T>(url.toString(), init);
+    return requestWithRetry<T>(url.toString(), init, method);
   }
 }
 
-async function requestWithRetry<T>(url: string, init: RequestInit): Promise<T> {
+async function requestWithRetry<T>(url: string, init: RequestInit, method = 'GET'): Promise<T> {
   let lastError: Error | null = null;
+  const isIdempotent = method === 'GET';
 
   for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
     try {
@@ -207,7 +209,11 @@ async function requestWithRetry<T>(url: string, init: RequestInit): Promise<T> {
           body
         );
 
-        if (attempt < MAX_REQUEST_ATTEMPTS && RETRYABLE_STATUSES.has(response.status)) {
+        const canRetryStatus = isIdempotent
+          ? RETRYABLE_STATUSES.has(response.status)
+          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
+
+        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
           await sleep(backoffMs(attempt));
           continue;
         }
@@ -222,10 +228,15 @@ async function requestWithRetry<T>(url: string, init: RequestInit): Promise<T> {
       return JSON.parse(body) as T;
     } catch (error) {
       lastError = error as Error;
-      if (
-        attempt < MAX_REQUEST_ATTEMPTS &&
-        (!(error instanceof GmailApiError) || RETRYABLE_STATUSES.has(error.status))
-      ) {
+      if (error instanceof GmailApiError) {
+        const canRetryStatus = isIdempotent
+          ? RETRYABLE_STATUSES.has(error.status)
+          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
+        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
+          await sleep(backoffMs(attempt));
+          continue;
+        }
+      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
         await sleep(backoffMs(attempt));
         continue;
       }
