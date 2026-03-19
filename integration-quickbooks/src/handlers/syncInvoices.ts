@@ -83,15 +83,22 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Quick
       };
     }
 
-    const syncState = await context.state.get<QuickBooksSyncState>(SYNC_STATE_KEY);
-    const checkpointValue = syncState?.lastSuccessfulSyncAt;
     let fromDate = fallbackFromDate;
-    if (checkpointValue && Number.isFinite(Date.parse(checkpointValue))) {
-      fromDate = checkpointValue;
-    } else if (checkpointValue) {
-      context.logger.warn('Corrupted sync checkpoint value — falling back to lookback window.', {
+    try {
+      const syncState = await context.state.get<QuickBooksSyncState>(SYNC_STATE_KEY);
+      const checkpointValue = syncState?.lastSuccessfulSyncAt;
+      if (checkpointValue && Number.isFinite(Date.parse(checkpointValue))) {
+        fromDate = checkpointValue;
+      } else if (checkpointValue) {
+        context.logger.warn('Corrupted sync checkpoint value — falling back to lookback window.', {
+          key: SYNC_STATE_KEY,
+          corruptedValue: checkpointValue,
+        });
+      }
+    } catch (stateError) {
+      context.logger.warn('Could not read QuickBooks sync checkpoint; using fallback lookback window.', {
         key: SYNC_STATE_KEY,
-        corruptedValue: checkpointValue,
+        error: toErrorMessage(stateError),
       });
     }
     resultBase.fromDate = fromDate;

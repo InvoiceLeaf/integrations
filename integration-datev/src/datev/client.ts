@@ -12,6 +12,7 @@ import type {
 } from '../types.js';
 
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
 const DEFAULT_MAX_REQUEST_ATTEMPTS = 3;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
@@ -256,6 +257,7 @@ export class DatevClient {
     }
 
     let lastError: Error | null = null;
+    const isIdempotent = input.method === 'GET';
 
     for (let attempt = 1; attempt <= this.maxRequestAttempts; attempt += 1) {
       const controller = new AbortController();
@@ -292,7 +294,10 @@ export class DatevClient {
             response.status,
             responseBody
           );
-          if (attempt < this.maxRequestAttempts && RETRYABLE_STATUSES.has(response.status)) {
+          const canRetryStatus = isIdempotent
+            ? RETRYABLE_STATUSES.has(response.status)
+            : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
+          if (attempt < this.maxRequestAttempts && canRetryStatus) {
             await sleep(backoffMs(attempt));
             continue;
           }
@@ -306,10 +311,15 @@ export class DatevClient {
         return JSON.parse(responseBody) as T;
       } catch (error) {
         lastError = error as Error;
-        if (
-          attempt < this.maxRequestAttempts &&
-          (!(error instanceof DatevApiError) || RETRYABLE_STATUSES.has(error.status))
-        ) {
+        if (error instanceof DatevApiError) {
+          const canRetryStatus = isIdempotent
+            ? RETRYABLE_STATUSES.has(error.status)
+            : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
+          if (attempt < this.maxRequestAttempts && canRetryStatus) {
+            await sleep(backoffMs(attempt));
+            continue;
+          }
+        } else if (isIdempotent && attempt < this.maxRequestAttempts) {
           await sleep(backoffMs(attempt));
           continue;
         }

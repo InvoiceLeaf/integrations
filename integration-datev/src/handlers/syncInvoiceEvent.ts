@@ -1,14 +1,7 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, DocumentEventInput } from '@invoiceleaf/integration-sdk';
 import type { DatevIntegrationConfig, HandlerResult } from '../types.js';
 import { toErrorMessage } from './actions.js';
 import { isSyncableDocument, syncSingleDocument } from './syncInvoices.js';
-
-interface DocumentEventInput {
-  documentId?: string;
-  document?: {
-    id?: string;
-  };
-}
 
 export const syncInvoiceEvent: IntegrationHandler<
   DocumentEventInput,
@@ -68,7 +61,7 @@ export const syncInvoiceEvent: IntegrationHandler<
       error: message,
     });
 
-    void context.data
+    await context.data
       .patchDocumentIntegrationMeta({
         documentId,
         system: 'datev',

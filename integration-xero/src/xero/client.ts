@@ -1,6 +1,7 @@
 const XERO_CONNECTIONS_URL = 'https://api.xero.com/connections';
 const XERO_ACCOUNTING_BASE_URL = 'https://api.xero.com/api.xro/2.0';
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
 const MAX_REQUEST_ATTEMPTS = 3;
 
 export interface XeroConnection {
@@ -72,7 +73,8 @@ export async function listXeroConnections(accessToken: string): Promise<XeroConn
         Accept: 'application/json',
       },
     },
-    false
+    false,
+    'GET'
   );
 }
 
@@ -199,7 +201,7 @@ export class XeroAccountingClient {
       init.body = JSON.stringify(body);
     }
 
-    return requestWithRetry<T>(url.toString(), init, true);
+    return requestWithRetry<T>(url.toString(), init, true, method);
   }
 }
 
@@ -210,9 +212,11 @@ function escapeWhereValue(value: string): string {
 async function requestWithRetry<T>(
   url: string,
   init: RequestInit,
-  includeBodyInError: boolean
+  includeBodyInError: boolean,
+  method = 'GET'
 ): Promise<T> {
   let lastError: Error | null = null;
+  const isIdempotent = method === 'GET';
 
   for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
     try {
@@ -226,7 +230,11 @@ async function requestWithRetry<T>(
           includeBodyInError ? body : ''
         );
 
-        if (attempt < MAX_REQUEST_ATTEMPTS && RETRYABLE_STATUSES.has(response.status)) {
+        const canRetryStatus = isIdempotent
+          ? RETRYABLE_STATUSES.has(response.status)
+          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
+
+        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
           await sleep(backoffMs(attempt));
           continue;
         }
@@ -249,10 +257,15 @@ async function requestWithRetry<T>(
       }
     } catch (error) {
       lastError = error as Error;
-      if (
-        attempt < MAX_REQUEST_ATTEMPTS &&
-        (!(error instanceof XeroApiError) || RETRYABLE_STATUSES.has(error.status))
-      ) {
+      if (error instanceof XeroApiError) {
+        const canRetryStatus = isIdempotent
+          ? RETRYABLE_STATUSES.has(error.status)
+          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
+        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
+          await sleep(backoffMs(attempt));
+          continue;
+        }
+      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
         await sleep(backoffMs(attempt));
         continue;
       }

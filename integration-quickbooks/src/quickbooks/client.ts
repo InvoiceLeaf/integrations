@@ -118,9 +118,8 @@ export class QuickBooksClient {
   }
 
   async findCustomerByDisplayName(displayName: string): Promise<QuickBooksCustomer | null> {
-    const escaped = escapeSqlValue(displayName);
     const response = await this.query<{ Customer?: QuickBooksCustomer[] }>(
-      `select * from Customer where DisplayName = '${escaped}' maxresults 1`
+      qbQuery('Customer', 'DisplayName', displayName)
     );
     return response.Customer?.[0] ?? null;
   }
@@ -138,9 +137,8 @@ export class QuickBooksClient {
   }
 
   async findVendorByDisplayName(displayName: string): Promise<QuickBooksVendor | null> {
-    const escaped = escapeSqlValue(displayName);
     const response = await this.query<{ Vendor?: QuickBooksVendor[] }>(
-      `select * from Vendor where DisplayName = '${escaped}' maxresults 1`
+      qbQuery('Vendor', 'DisplayName', displayName)
     );
     return response.Vendor?.[0] ?? null;
   }
@@ -158,9 +156,8 @@ export class QuickBooksClient {
   }
 
   async findInvoiceByDocNumber(docNumber: string): Promise<QuickBooksInvoice | null> {
-    const escaped = escapeSqlValue(docNumber);
     const response = await this.query<{ Invoice?: QuickBooksInvoice[] }>(
-      `select * from Invoice where DocNumber = '${escaped}' maxresults 1`
+      qbQuery('Invoice', 'DocNumber', docNumber)
     );
     return response.Invoice?.[0] ?? null;
   }
@@ -175,9 +172,8 @@ export class QuickBooksClient {
   }
 
   async findBillByDocNumber(docNumber: string): Promise<QuickBooksBill | null> {
-    const escaped = escapeSqlValue(docNumber);
     const response = await this.query<{ Bill?: QuickBooksBill[] }>(
-      `select * from Bill where DocNumber = '${escaped}' maxresults 1`
+      qbQuery('Bill', 'DocNumber', docNumber)
     );
     return response.Bill?.[0] ?? null;
   }
@@ -247,12 +243,15 @@ export class QuickBooksClient {
       init.body = JSON.stringify(body);
     }
 
-    return requestWithRetry<T>(url.toString(), init);
+    return requestWithRetry<T>(url.toString(), init, method);
   }
 }
 
-async function requestWithRetry<T>(url: string, init: RequestInit): Promise<T> {
+const SAFE_RETRY_STATUSES_FOR_POST = new Set([429, 502, 503]);
+
+async function requestWithRetry<T>(url: string, init: RequestInit, method: 'GET' | 'POST'): Promise<T> {
   let lastError: Error | null = null;
+  const isIdempotent = method === 'GET';
 
   for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
     try {
@@ -266,7 +265,11 @@ async function requestWithRetry<T>(url: string, init: RequestInit): Promise<T> {
           body
         );
 
-        if (attempt < MAX_REQUEST_ATTEMPTS && RETRYABLE_STATUSES.has(response.status)) {
+        const canRetryStatus = isIdempotent
+          ? RETRYABLE_STATUSES.has(response.status)
+          : SAFE_RETRY_STATUSES_FOR_POST.has(response.status);
+
+        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
           await sleep(backoffMs(attempt));
           continue;
         }
@@ -281,10 +284,15 @@ async function requestWithRetry<T>(url: string, init: RequestInit): Promise<T> {
       return JSON.parse(body) as T;
     } catch (error) {
       lastError = error as Error;
-      if (
-        attempt < MAX_REQUEST_ATTEMPTS &&
-        (!(error instanceof QuickBooksApiError) || RETRYABLE_STATUSES.has(error.status))
-      ) {
+      if (error instanceof QuickBooksApiError) {
+        const canRetryStatus = isIdempotent
+          ? RETRYABLE_STATUSES.has(error.status)
+          : SAFE_RETRY_STATUSES_FOR_POST.has(error.status);
+        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
+          await sleep(backoffMs(attempt));
+          continue;
+        }
+      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
         await sleep(backoffMs(attempt));
         continue;
       }
@@ -307,8 +315,32 @@ function trimToUndefined(value: string | undefined): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+const MAX_QUERY_VALUE_LENGTH = 500;
+
 function escapeSqlValue(value: string): string {
-  return value.replace(/'/g, "\\'");
+  // QuickBooks Query Language escaping:
+  // 1. Truncate to prevent excessively long queries
+  // 2. Escape backslashes first (before they're introduced by other escapes)
+  // 3. Escape single quotes
+  // 4. Strip control characters that could alter query semantics
+  const truncated = value.length > MAX_QUERY_VALUE_LENGTH
+    ? value.slice(0, MAX_QUERY_VALUE_LENGTH)
+    : value;
+  return truncated
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/%/g, '\\%')
+    .replace(/_/g, '\\_')
+    .replace(/[\x00\x01-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
+    .replace(/[\t\r\n]/g, ' ');
+}
+
+/**
+ * Build a QuickBooks Query Language WHERE clause with safe value interpolation.
+ * Centralizes escaping so callers don't embed template literals directly.
+ */
+function qbQuery(entity: string, field: string, value: string, maxResults = 1): string {
+  return `select * from ${entity} where ${field} = '${escapeSqlValue(value)}' maxresults ${maxResults}`;
 }
 
 function backoffMs(attempt: number): number {

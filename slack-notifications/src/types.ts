@@ -310,7 +310,7 @@ export interface ExportCompletedInput {
  */
 export interface DailySummaryInput {
   spaceId: string;
-  scheduledAt: string;
+  scheduledTime: string;
 }
 
 /**

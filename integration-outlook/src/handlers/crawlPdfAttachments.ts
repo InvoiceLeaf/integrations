@@ -24,9 +24,16 @@ async function importAttachment(
   stateKey: string,
   ttlSeconds: number
 ): Promise<'imported' | 'duplicate' | 'failed'> {
-  const existing = await context.state.get(stateKey);
-  if (existing) {
-    return 'duplicate';
+  try {
+    const existing = await context.state.get(stateKey);
+    if (existing) {
+      return 'duplicate';
+    }
+  } catch (stateError) {
+    context.logger.warn('Could not check dedup state; proceeding with import to avoid data loss.', {
+      stateKey,
+      error: toErrorMessage(stateError),
+    });
   }
 
   try {

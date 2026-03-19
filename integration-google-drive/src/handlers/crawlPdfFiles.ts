@@ -102,9 +102,16 @@ async function importSingleFile(
   dedupeTtlSeconds: number
 ): Promise<'imported' | 'duplicate' | 'skipped' | 'failed'> {
   const stateKey = buildFileStateKey(statePrefix, file);
-  const stateValue = await context.state.get(stateKey);
-  if (stateValue) {
-    return 'duplicate';
+  try {
+    const stateValue = await context.state.get(stateKey);
+    if (stateValue) {
+      return 'duplicate';
+    }
+  } catch (stateError) {
+    context.logger.warn('Could not check dedup state; proceeding with import to avoid data loss.', {
+      stateKey,
+      error: toErrorMessage(stateError),
+    });
   }
 
   // Claim the state key immediately after the check to minimize the race window.
