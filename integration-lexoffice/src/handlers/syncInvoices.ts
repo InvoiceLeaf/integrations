@@ -53,16 +53,33 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Lexof
     const apiKey = await resolveApiKey(context);
     const client = new LexofficeClient(apiKey, context.config.apiBaseUrl);
 
-    const syncState = await context.state.get<LexofficeSyncState>(SYNC_STATE_KEY);
-    const fromDate = syncState?.lastSuccessfulSyncAt ?? fallbackFromDate;
+    let fromDate = fallbackFromDate;
+    try {
+      const syncState = await context.state.get<LexofficeSyncState>(SYNC_STATE_KEY);
+      const checkpointValue = syncState?.lastSuccessfulSyncAt;
+      if (checkpointValue && Number.isFinite(Date.parse(checkpointValue))) {
+        fromDate = checkpointValue;
+      } else if (checkpointValue) {
+        context.logger.warn('Corrupted sync checkpoint value — falling back to lookback window.', {
+          key: SYNC_STATE_KEY,
+          corruptedValue: checkpointValue,
+        });
+      }
+    } catch (stateError) {
+      context.logger.warn('Could not read lexoffice sync checkpoint. Using fallback lookback window.', {
+        key: SYNC_STATE_KEY,
+        error: stateError instanceof Error ? stateError.message : String(stateError),
+      });
+    }
     resultBase.fromDate = fromDate;
 
     let page = 1;
     let hasMore = true;
 
     while (hasMore && resultBase.processed < maxDocumentsPerRun) {
+      const parsedStartDate = Date.parse(fromDate);
       const pageResult = await context.data.listDocuments({
-        startDate: Date.parse(fromDate),
+        startDate: Number.isFinite(parsedStartDate) ? parsedStartDate : Date.parse(fallbackFromDate),
         page,
         size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
@@ -79,7 +96,7 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Lexof
 
         resultBase.processed += 1;
 
-        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false)) {
+        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false, context.config.requireProcessedDocuments ?? false)) {
           resultBase.skipped += 1;
           continue;
         }
@@ -170,10 +187,16 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Lexof
     const completedAt = new Date().toISOString();
     let checkpointUpdated = false;
     if (resultBase.failed === 0) {
-      await context.state.set<LexofficeSyncState>(SYNC_STATE_KEY, {
-        lastSuccessfulSyncAt: completedAt,
-      });
-      checkpointUpdated = true;
+      try {
+        await context.state.set<LexofficeSyncState>(SYNC_STATE_KEY, {
+          lastSuccessfulSyncAt: completedAt,
+        });
+        checkpointUpdated = true;
+      } catch (checkpointError) {
+        context.logger.warn('Failed to save sync checkpoint — documents were imported successfully', {
+          error: checkpointError instanceof Error ? checkpointError.message : String(checkpointError),
+        });
+      }
     }
 
     return {
@@ -227,7 +250,7 @@ function buildFallbackFileName(document: Document, prefix?: string): string {
   return `${safePrefix}-${invoice}.pdf`;
 }
 
-function isSyncableDocument(document: Document, includeDraftDocuments: boolean): boolean {
+function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean): boolean {
   if (document.deleted) {
     return false;
   }
@@ -237,6 +260,10 @@ function isSyncableDocument(document: Document, includeDraftDocuments: boolean):
   }
 
   if (document.documentStatus === 'DRAFT' && !includeDraftDocuments) {
+    return false;
+  }
+
+  if (requireProcessedDocuments && document.processed === false) {
     return false;
   }
 

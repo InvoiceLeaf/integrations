@@ -202,6 +202,11 @@
         "title": "Include Draft Documents",
         "default": false
       },
+      "requireProcessedDocuments": {
+        "type": "boolean",
+        "title": "Require Processed Documents",
+        "default": false
+      },
       "enableInboundSync": {
         "type": "boolean",
         "title": "Enable Inbound sevDesk Sync",
@@ -247,7 +252,7 @@
       {
         "title": "Sync Limits",
         "description": "Checkpoint window and per-run throughput",
-        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments", "enableInboundSync", "inboundInitialSyncLookbackHours", "inboundMaxInvoicesPerRun", "inboundPageSize"]
+        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments", "requireProcessedDocuments", "enableInboundSync", "inboundInitialSyncLookbackHours", "inboundMaxInvoicesPerRun", "inboundPageSize"]
       },
       {
         "title": "Mapping Defaults",

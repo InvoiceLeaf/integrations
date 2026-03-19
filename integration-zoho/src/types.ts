@@ -8,6 +8,7 @@ export interface ZohoIntegrationConfig {
   defaultItemId?: string;
   fallbackCustomerName?: string;
   includeDraftDocuments?: boolean;
+  requireProcessedDocuments?: boolean;
   syncPayables?: boolean;
 }
 

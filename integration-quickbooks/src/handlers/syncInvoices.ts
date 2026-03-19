@@ -84,7 +84,16 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Quick
     }
 
     const syncState = await context.state.get<QuickBooksSyncState>(SYNC_STATE_KEY);
-    const fromDate = syncState?.lastSuccessfulSyncAt ?? fallbackFromDate;
+    const checkpointValue = syncState?.lastSuccessfulSyncAt;
+    let fromDate = fallbackFromDate;
+    if (checkpointValue && Number.isFinite(Date.parse(checkpointValue))) {
+      fromDate = checkpointValue;
+    } else if (checkpointValue) {
+      context.logger.warn('Corrupted sync checkpoint value — falling back to lookback window.', {
+        key: SYNC_STATE_KEY,
+        corruptedValue: checkpointValue,
+      });
+    }
     resultBase.fromDate = fromDate;
 
     const accessToken = await context.credentials.getAccessToken(SYSTEM);
@@ -97,8 +106,9 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Quick
     let hasMore = true;
 
     while (hasMore && resultBase.processed < maxDocumentsPerRun) {
+      const parsedStartDate = Date.parse(fromDate);
       const pageResult = await context.data.listDocuments({
-        startDate: Date.parse(fromDate),
+        startDate: Number.isFinite(parsedStartDate) ? parsedStartDate : Date.parse(fallbackFromDate),
         page,
         size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
@@ -115,7 +125,7 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Quick
 
         resultBase.processed += 1;
 
-        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false)) {
+        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false, context.config.requireProcessedDocuments ?? false)) {
           resultBase.skipped += 1;
           continue;
         }
@@ -253,10 +263,14 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Quick
     const completedAt = new Date().toISOString();
     let checkpointUpdated = false;
     if (resultBase.failed === 0) {
-      await context.state.set<QuickBooksSyncState>(SYNC_STATE_KEY, {
-        lastSuccessfulSyncAt: completedAt,
-      });
-      checkpointUpdated = true;
+      try {
+        await context.state.set<QuickBooksSyncState>(SYNC_STATE_KEY, {
+          lastSuccessfulSyncAt: completedAt,
+        });
+        checkpointUpdated = true;
+      } catch (e) {
+        context.logger.warn('Failed to persist sync checkpoint — sync results are still valid', { error: String(e) });
+      }
     }
 
     return {
@@ -385,9 +399,10 @@ function buildInvoiceLines(document: Document, salesItemId: string): QuickBooksI
 
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
-    const safeQuantity = quantity === 0 ? 1 : quantity;
-    const amount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0));
-    const unitPrice = toFiniteNumber(item.unitAmount, amount / safeQuantity);
+    const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
+    const rawAmount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ?? 0;
+    const amount = Math.abs(rawAmount);
+    const unitPrice = Math.abs(toFiniteNumber(item.unitAmount, amount / safeQuantity));
 
     lines.push({
       Amount: amount,
@@ -405,16 +420,22 @@ function buildInvoiceLines(document: Document, salesItemId: string): QuickBooksI
     return lines;
   }
 
-  const fallbackAmount = firstFinite(document.totalAmount, document.netAmount, document.amountDue, 0);
+  const fallbackAmount = firstFinite(document.netAmount, document.totalAmount, document.amountDue);
+  if (fallbackAmount === undefined || fallbackAmount === 0) {
+    throw new Error(
+      `Document ${document.id} has no line items and no valid amount (netAmount, totalAmount, amountDue are all missing or zero). Cannot create a QuickBooks invoice with $0.`
+    );
+  }
+  const absAmount = Math.abs(fallbackAmount);
   return [
     {
-      Amount: fallbackAmount,
+      Amount: absAmount,
       Description: defaultLineDescription(document),
       DetailType: 'SalesItemLineDetail',
       SalesItemLineDetail: {
         ItemRef: { value: salesItemId },
         Qty: 1,
-        UnitPrice: fallbackAmount,
+        UnitPrice: absAmount,
       },
     },
   ];
@@ -424,7 +445,10 @@ function buildBillLines(document: Document, expenseAccountId: string): QuickBook
   const lines: QuickBooksBillLineInput[] = [];
 
   for (const item of document.lineItems ?? []) {
-    const amount = firstFinite(item.totalAmount, item.netAmount, item.unitAmount, 0);
+    const quantity = toFiniteNumber(item.quantity, 1);
+    const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
+    const rawAmount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ?? 0;
+    const amount = Math.abs(rawAmount);
     lines.push({
       Amount: amount,
       Description: trimToUndefined(item.name) ?? defaultLineDescription(document),
@@ -439,10 +463,16 @@ function buildBillLines(document: Document, expenseAccountId: string): QuickBook
     return lines;
   }
 
-  const fallbackAmount = firstFinite(document.totalAmount, document.netAmount, document.amountDue, 0);
+  const fallbackAmount = firstFinite(document.totalAmount, document.netAmount, document.amountDue);
+  if (fallbackAmount === undefined || fallbackAmount === 0) {
+    throw new Error(
+      `Document ${document.id} has no line items and no valid amount (totalAmount, netAmount, amountDue are all missing or zero). Cannot create a QuickBooks bill with $0.`
+    );
+  }
+  const absAmount = Math.abs(fallbackAmount);
   return [
     {
-      Amount: fallbackAmount,
+      Amount: absAmount,
       Description: defaultLineDescription(document),
       DetailType: 'AccountBasedExpenseLineDetail',
       AccountBasedExpenseLineDetail: {
@@ -453,7 +483,10 @@ function buildBillLines(document: Document, expenseAccountId: string): QuickBook
 }
 
 function buildDocumentNumber(document: Document, prefix?: string): string | undefined {
-  const invoiceId = trimToUndefined(document.invoiceId) ?? document.id;
+  const invoiceId = trimToUndefined(document.invoiceId);
+  if (!invoiceId) {
+    return undefined;
+  }
   const value = `${prefix ?? ''}${invoiceId}`.trim();
   return value.length > 0 ? value.slice(0, 21) : undefined;
 }
@@ -462,7 +495,7 @@ function defaultLineDescription(document: Document): string {
   return trimToUndefined(document.description) || `Invoice ${document.invoiceId ?? document.id}`;
 }
 
-function isSyncableDocument(document: Document, includeDraftDocuments: boolean): boolean {
+function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean): boolean {
   if (document.deleted) {
     return false;
   }
@@ -472,6 +505,10 @@ function isSyncableDocument(document: Document, includeDraftDocuments: boolean):
   }
 
   if (document.documentStatus === 'DRAFT' && !includeDraftDocuments) {
+    return false;
+  }
+
+  if (requireProcessedDocuments && document.processed === false) {
     return false;
   }
 
@@ -526,13 +563,13 @@ function toFiniteNumber(value: number | undefined, fallback: number): number {
   return fallback;
 }
 
-function firstFinite(...values: Array<number | undefined>): number {
+function firstFinite(...values: Array<number | undefined>): number | undefined {
   for (const value of values) {
     if (Number.isFinite(value)) {
       return value as number;
     }
   }
-  return 0;
+  return undefined;
 }
 
 function trimToUndefined(value: string | undefined): string | undefined {

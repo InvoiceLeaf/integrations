@@ -5,6 +5,7 @@ export interface LexofficeIntegrationConfig {
   maxDocumentsPerRun?: number;
   pageSize?: number;
   includeDraftDocuments?: boolean;
+  requireProcessedDocuments?: boolean;
   fallbackFileNamePrefix?: string;
 }
 

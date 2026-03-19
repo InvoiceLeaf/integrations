@@ -53,6 +53,7 @@ export interface GetMyInvoicesIntegrationConfig {
   maxDocumentsPerRun?: number;
   pageSize?: number;
   includeDraftDocuments?: boolean;
+  requireProcessedDocuments?: boolean;
   enableInboundSync?: boolean;
   inboundInitialSyncLookbackHours?: number;
   inboundMaxDocumentsPerRun?: number;

@@ -120,7 +120,7 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, ZohoI
 
         resultBase.processed += 1;
 
-        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false)) {
+        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false, context.config.requireProcessedDocuments ?? false)) {
           resultBase.skipped += 1;
           continue;
         }
@@ -386,7 +386,7 @@ function defaultLineDescription(document: Document): string {
   return trimToUndefined(document.description) || `Invoice ${document.invoiceId ?? document.id}`;
 }
 
-function isSyncableDocument(document: Document, includeDraftDocuments: boolean): boolean {
+function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean): boolean {
   if (document.deleted) {
     return false;
   }
@@ -396,6 +396,10 @@ function isSyncableDocument(document: Document, includeDraftDocuments: boolean):
   }
 
   if (document.documentStatus === 'DRAFT' && !includeDraftDocuments) {
+    return false;
+  }
+
+  if (requireProcessedDocuments && document.processed === false) {
     return false;
   }
 

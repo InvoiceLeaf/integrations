@@ -80,7 +80,15 @@ export const syncInvoices: IntegrationHandler<
     let fromDate = fallbackFromDate;
     try {
       const syncState = await context.state.get<SevdeskSyncState>(SYNC_STATE_KEY);
-      fromDate = syncState?.lastSuccessfulSyncAt ?? fallbackFromDate;
+      const checkpointValue = syncState?.lastSuccessfulSyncAt;
+      if (checkpointValue && Number.isFinite(Date.parse(checkpointValue))) {
+        fromDate = checkpointValue;
+      } else if (checkpointValue) {
+        context.logger.warn('Corrupted sync checkpoint value — falling back to lookback window.', {
+          key: SYNC_STATE_KEY,
+          corruptedValue: checkpointValue,
+        });
+      }
     } catch (stateError) {
       context.logger.warn('Could not read sevDesk sync checkpoint. Using fallback lookback window.', {
         key: SYNC_STATE_KEY,
@@ -103,8 +111,9 @@ export const syncInvoices: IntegrationHandler<
     let hasMore = true;
 
     while (hasMore && resultBase.processed < maxDocumentsPerRun) {
+      const parsedStartDate = Date.parse(fromDate);
       const pageResult = await context.data.listDocuments({
-        startDate: Date.parse(fromDate),
+        startDate: Number.isFinite(parsedStartDate) ? parsedStartDate : Date.parse(fallbackFromDate),
         page,
         size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
@@ -121,7 +130,7 @@ export const syncInvoices: IntegrationHandler<
 
         resultBase.processed += 1;
 
-        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false)) {
+        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false, context.config.requireProcessedDocuments ?? false)) {
           resultBase.skipped += 1;
           continue;
         }
@@ -281,14 +290,14 @@ export async function resolveRuntimeDefaults(
   context: IntegrationContext<SevdeskIntegrationConfig>,
   client: SevdeskClient
 ): Promise<RuntimeDefaults> {
-  const discovered = (await client.listInvoices({ limit: 1, offset: 0 }))[0];
+  const discovered = (await client.listInvoices({ limit: 1, offset: 0 }))?.[0];
 
   const contactPersonId =
     toOptionalInt(context.config.contactPersonId) ?? toOptionalInt(discovered?.contactPerson?.id);
   const addressCountryId =
     toOptionalInt(context.config.addressCountryId) ?? toOptionalInt(discovered?.addressCountry?.id);
 
-  const sampleContact = (await client.listContacts({ limit: 1, offset: 0 }))[0];
+  const sampleContact = (await client.listContacts({ limit: 1, offset: 0 }))?.[0];
   const contactCategoryId =
     toOptionalInt(context.config.contactCategoryId) ??
     toOptionalInt(sampleContact?.category?.id) ??
@@ -322,7 +331,7 @@ async function resolveContact(
 ): Promise<SevdeskContact> {
   const company = pickCompanyForDocument(document);
   const companyId = trimToUndefined(company?.id);
-  const cacheKey = companyId ?? trimToUndefined(company?.name) ?? `document:${document.id}`;
+  const cacheKey = companyId ?? buildCompanyCacheKey(company) ?? `document:${document.id}`;
   const cached = contactCache.get(cacheKey);
   if (cached?.id) {
     return cached;
@@ -372,7 +381,7 @@ async function resolveContact(
     categoryId: runtimeDefaults.contactCategoryId,
     customerNumber,
     taxNumber: trimToUndefined(company?.taxId),
-    vatNumber: trimToUndefined(company?.taxId),
+    vatNumber: trimToUndefined(company?.vatId),
   };
 
   const created = await client.createContact(createInput);
@@ -392,6 +401,21 @@ async function resolveContact(
 
   contactCache.set(cacheKey, created);
   return created;
+}
+
+function buildCompanyCacheKey(company: Document['supplier'] | Document['receiver'] | undefined): string | undefined {
+  const name = trimToUndefined(company?.name);
+  if (!name) {
+    return undefined;
+  }
+  const parts = [
+    name,
+    trimToUndefined(company?.taxId),
+    trimToUndefined(company?.vatId),
+    trimToUndefined(company?.street),
+    trimToUndefined(company?.zip),
+  ].filter(Boolean);
+  return `name:${parts.join('|')}`;
 }
 
 function pickCompanyForDocument(document: Document): Document['supplier'] | Document['receiver'] {
@@ -428,8 +452,8 @@ function buildInvoicePayload(input: BuildInvoicePayloadInput): SevdeskInvoiceUps
     taxType: input.runtimeDefaults.taxType,
     taxRuleId: input.runtimeDefaults.taxRuleId,
     taxText: input.runtimeDefaults.taxText,
-    taxRate: 0,
-    discount: 0,
+    taxRate: toTaxRateFromAmounts(input.document.taxAmount, input.document.netAmount) ?? input.runtimeDefaults.defaultTaxRate,
+    discount: input.document.discount ?? 0,
     status: 100,
     invoiceNumber: input.invoiceNumber,
     header: input.invoiceNumber ? `Invoice ${input.invoiceNumber}` : undefined,
@@ -445,12 +469,12 @@ function buildLineItems(document: Document, runtimeDefaults: RuntimeDefaults): S
 
   for (const [index, item] of (document.lineItems ?? []).entries()) {
     const quantity = toFiniteNumber(item.quantity, 1);
-    const safeQuantity = quantity === 0 ? 1 : quantity;
-    const computedLineAmount = firstFinite(item.netAmount, item.totalAmount, 0);
+    const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
+    const computedLineAmount = firstFinite(item.netAmount, item.totalAmount, 0) ?? 0;
     const unitAmount = toFiniteNumber(item.unitAmount, computedLineAmount / safeQuantity);
     const taxRate =
       toTaxRateFromAmounts(item.taxAmount, item.netAmount) ??
-      toFiniteNumber(document.taxItems?.[0]?.taxRate, runtimeDefaults.defaultTaxRate);
+      toFiniteNumber(document.taxItems?.[0]?.taxPercentage, runtimeDefaults.defaultTaxRate);
 
     lineItems.push({
       name: trimToUndefined(item.name) || defaultLineDescription(document),
@@ -464,14 +488,22 @@ function buildLineItems(document: Document, runtimeDefaults: RuntimeDefaults): S
   }
 
   const filtered = lineItems.filter(
-    (item) => Number.isFinite(item.price) && Number.isFinite(item.quantity) && item.price >= 0
+    (item) => Number.isFinite(item.price) && item.price! >= 0 && Number.isFinite(item.quantity)
   );
 
   if (filtered.length > 0) {
+    for (let i = 0; i < filtered.length; i++) {
+      filtered[i].positionNumber = i;
+    }
     return filtered;
   }
 
-  const amount = firstFinite(document.netAmount, document.totalAmount, document.amountDue, 0);
+  const amount = firstFinite(document.netAmount, document.totalAmount, document.amountDue);
+  if (amount === undefined || amount === 0) {
+    throw new Error(
+      `Document ${document.id} has no line items and no valid amount (netAmount, totalAmount, amountDue are all missing or zero). Cannot create a sevDesk invoice with price 0.`
+    );
+  }
   return [
     {
       name: defaultLineDescription(document),
@@ -506,9 +538,9 @@ function formatAddress(company: Document['supplier'] | Document['receiver'] | un
 
   const lines = [
     trimToUndefined(company.name),
-    trimToUndefined(company.address?.street),
-    formatCityLine(company.address?.postalCode, company.address?.city),
-    trimToUndefined(company.address?.country),
+    trimToUndefined(company.street),
+    formatCityLine(company.zip, company.city),
+    trimToUndefined(company.country),
   ].filter((line): line is string => Boolean(line));
 
   return lines.length > 0 ? lines.join('\n') : undefined;
@@ -525,7 +557,7 @@ function defaultLineDescription(document: Document): string {
   return trimToUndefined(document.description) || `Invoice ${document.invoiceId ?? document.id}`;
 }
 
-export function isSyncableDocument(document: Document, includeDraftDocuments: boolean): boolean {
+export function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean): boolean {
   if (document.deleted) {
     return false;
   }
@@ -535,6 +567,10 @@ export function isSyncableDocument(document: Document, includeDraftDocuments: bo
   }
 
   if (document.documentStatus === 'DRAFT' && !includeDraftDocuments) {
+    return false;
+  }
+
+  if (requireProcessedDocuments && document.processed === false) {
     return false;
   }
 
@@ -622,13 +658,13 @@ function toFiniteNumber(value: number | undefined, fallback: number | undefined)
   return fallback ?? 0;
 }
 
-function firstFinite(...values: Array<number | undefined>): number {
+function firstFinite(...values: Array<number | undefined>): number | undefined {
   for (const value of values) {
     if (Number.isFinite(value)) {
       return value as number;
     }
   }
-  return 0;
+  return undefined;
 }
 
 function trimToUndefined(value: string | undefined): string | undefined {

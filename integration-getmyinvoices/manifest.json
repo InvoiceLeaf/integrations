@@ -254,6 +254,11 @@
         "title": "Include Draft Documents",
         "default": false
       },
+      "requireProcessedDocuments": {
+        "type": "boolean",
+        "title": "Require Processed Documents",
+        "default": false
+      },
       "enableInboundSync": {
         "type": "boolean",
         "title": "Enable Inbound Sync",
@@ -325,6 +330,7 @@
           "maxDocumentsPerRun",
           "pageSize",
           "includeDraftDocuments",
+          "requireProcessedDocuments",
           "enableInboundSync",
           "inboundInitialSyncLookbackHours",
           "inboundMaxDocumentsPerRun",

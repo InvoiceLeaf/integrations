@@ -157,7 +157,7 @@ export const syncInvoices: IntegrationHandler<
 
         resultBase.processed += 1;
 
-        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false)) {
+        if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false, context.config.requireProcessedDocuments ?? false)) {
           resultBase.skipped += 1;
           continue;
         }
@@ -692,7 +692,7 @@ function buildDocumentNumber(document: Document, prefix?: string): string | unde
   return value.length > 0 ? value.slice(0, 120) : undefined;
 }
 
-export function isSyncableDocument(document: Document, includeDraftDocuments: boolean): boolean {
+export function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean): boolean {
   if (document.deleted) {
     return false;
   }
@@ -702,6 +702,10 @@ export function isSyncableDocument(document: Document, includeDraftDocuments: bo
   }
 
   if (document.documentStatus === 'DRAFT' && !includeDraftDocuments) {
+    return false;
+  }
+
+  if (requireProcessedDocuments && document.processed === false) {
     return false;
   }
 

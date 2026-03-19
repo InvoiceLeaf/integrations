@@ -10,6 +10,7 @@ export interface QuickBooksIntegrationConfig {
   fallbackCustomerName?: string;
   fallbackVendorName?: string;
   includeDraftDocuments?: boolean;
+  requireProcessedDocuments?: boolean;
 }
 
 export interface HandlerResult {

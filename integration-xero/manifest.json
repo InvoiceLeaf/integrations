@@ -108,6 +108,11 @@
         "type": "boolean",
         "title": "Include Draft Documents",
         "default": false
+      },
+      "requireProcessedDocuments": {
+        "type": "boolean",
+        "title": "Require Processed Documents",
+        "default": false
       }
     }
   },
@@ -121,7 +126,7 @@
       {
         "title": "Sync Limits",
         "description": "Checkpoint window and per-run throughput",
-        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments"]
+        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments", "requireProcessedDocuments"]
       },
       {
         "title": "Mapping Defaults",

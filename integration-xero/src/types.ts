@@ -9,6 +9,7 @@ export interface XeroIntegrationConfig {
   defaultExpenseAccountCode?: string;
   fallbackContactName?: string;
   includeDraftDocuments?: boolean;
+  requireProcessedDocuments?: boolean;
 }
 
 export interface HandlerResult {

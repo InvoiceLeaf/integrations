@@ -19,6 +19,8 @@ export interface SevdeskIntegrationConfig {
   invoiceNumberPrefix?: string;
   fallbackContactName?: string;
   includeDraftDocuments?: boolean;
+  requireProcessedDocuments?: boolean;
+  enableEventSync?: boolean;
   enableInboundSync?: boolean;
   inboundInitialSyncLookbackHours?: number;
   inboundMaxInvoicesPerRun?: number;

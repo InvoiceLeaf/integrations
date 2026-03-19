@@ -1,4 +1,4 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, DocumentEventInput } from '@invoiceleaf/integration-sdk';
 import type { GetMyInvoicesIntegrationConfig, HandlerResult } from '../types.js';
 import { GetMyInvoicesApiError, GetMyInvoicesClient } from '../getmyinvoices/client.js';
 import { resolveGetMyInvoicesApiKey } from './auth.js';
@@ -8,13 +8,6 @@ import {
   syncSingleDocument,
   SYSTEM,
 } from './syncInvoices.js';
-
-interface DocumentEventInput {
-  documentId?: string;
-  document?: {
-    id?: string;
-  };
-}
 
 export const syncInvoiceEvent: IntegrationHandler<
   DocumentEventInput,
@@ -68,7 +61,7 @@ export const syncInvoiceEvent: IntegrationHandler<
       };
     }
 
-    if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false)) {
+    if (!isSyncableDocument(document, context.config.includeDraftDocuments ?? false, context.config.requireProcessedDocuments ?? false)) {
       return {
         success: true,
         message: `Document ${documentId} is not syncable and was skipped.`,
@@ -118,7 +111,7 @@ export const syncInvoiceEvent: IntegrationHandler<
       error: message,
     });
 
-    void context.data
+    await context.data
       .patchDocumentIntegrationMeta({
         documentId,
         system: SYSTEM,
