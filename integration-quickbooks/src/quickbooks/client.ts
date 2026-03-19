@@ -247,7 +247,7 @@ export class QuickBooksClient {
   }
 }
 
-const SAFE_RETRY_STATUSES_FOR_POST = new Set([429, 502, 503]);
+const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429, 502, 503]);
 
 async function requestWithRetry<T>(url: string, init: RequestInit, method: 'GET' | 'POST'): Promise<T> {
   let lastError: Error | null = null;
@@ -267,7 +267,7 @@ async function requestWithRetry<T>(url: string, init: RequestInit, method: 'GET'
 
         const canRetryStatus = isIdempotent
           ? RETRYABLE_STATUSES.has(response.status)
-          : SAFE_RETRY_STATUSES_FOR_POST.has(response.status);
+          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
 
         if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
           await sleep(backoffMs(attempt));
@@ -287,7 +287,7 @@ async function requestWithRetry<T>(url: string, init: RequestInit, method: 'GET'
       if (error instanceof QuickBooksApiError) {
         const canRetryStatus = isIdempotent
           ? RETRYABLE_STATUSES.has(error.status)
-          : SAFE_RETRY_STATUSES_FOR_POST.has(error.status);
+          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
         if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
           await sleep(backoffMs(attempt));
           continue;
