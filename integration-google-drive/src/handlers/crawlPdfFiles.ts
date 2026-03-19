@@ -10,6 +10,7 @@ import { GoogleDriveApiError, GoogleDriveClient } from '../googleDrive/client.js
 const SYSTEM = 'google-drive';
 const ENTITY_FILE = 'file';
 const DEFAULT_MAX_FILES = 100;
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
 
 interface CrawlInput extends Partial<ScheduleInput> {
   folderId?: string;
@@ -106,6 +107,11 @@ async function importSingleFile(
     return 'duplicate';
   }
 
+  // Claim the state key immediately after the check to minimize the race window.
+  // Without this, the mappings lookup below would widen the gap between check and claim,
+  // allowing concurrent crawls to both pass the state check for the same file.
+  await context.state.set(stateKey, 'pending', { ttlSeconds: dedupeTtlSeconds });
+
   const existingByExternal = await context.mappings.findByExternal({
     system: SYSTEM,
     entity: ENTITY_FILE,
@@ -118,6 +124,19 @@ async function importSingleFile(
 
   try {
     const downloaded = await client.downloadFile(file.id);
+
+    const estimatedSizeBytes = Math.ceil(downloaded.contentBase64.length * 3 / 4);
+    if (estimatedSizeBytes > MAX_FILE_SIZE_BYTES) {
+      context.logger.warn('Skipping oversized Google Drive file', {
+        fileId: file.id,
+        fileName: file.name,
+        estimatedSizeBytes,
+        maxSizeBytes: MAX_FILE_SIZE_BYTES,
+      });
+      await context.state.delete(stateKey).catch(() => {});
+      return 'skipped';
+    }
+
     const importResult = await context.data.importDocument({
       fileName: file.name,
       contentType: file.mimeType || 'application/pdf',
@@ -168,6 +187,16 @@ async function importSingleFile(
       fileName: file.name,
       error: toErrorMessage(error),
     });
+    try {
+      await context.state.delete(stateKey);
+    } catch (deleteError) {
+      context.logger.warn('Failed to clear pending state key after import failure; setting short TTL', {
+        stateKey,
+        error: toErrorMessage(deleteError),
+      });
+      // If delete fails, overwrite with a short TTL so it auto-expires
+      await context.state.set(stateKey, 'failed', { ttlSeconds: 300 }).catch(() => {});
+    }
     return 'failed';
   }
 }

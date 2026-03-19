@@ -6,6 +6,7 @@ import { DropboxApiError, DropboxClient } from '../dropbox/client.js';
 const SYSTEM = 'dropbox';
 const ENTITY_FILE = 'file';
 const DEFAULT_MAX_FILES = 100;
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
 
 interface CrawlInput extends Partial<ScheduleInput> {
   path?: string;
@@ -97,6 +98,11 @@ async function importSingleFile(
     return 'duplicate';
   }
 
+  // Claim the state key immediately after the check to minimize the race window.
+  // Without this, the mappings lookup below would widen the gap between check and claim,
+  // allowing concurrent crawls to both pass the state check for the same file.
+  await context.state.set(stateKey, 'pending', { ttlSeconds: dedupeTtlSeconds });
+
   const existingByExternal = await context.mappings.findByExternal({
     system: SYSTEM,
     entity: ENTITY_FILE,
@@ -107,8 +113,31 @@ async function importSingleFile(
     return 'duplicate';
   }
 
+  const downloadPath = file.pathLower || file.pathDisplay;
+  if (!downloadPath) {
+    context.logger.warn('Skipping Dropbox file with no pathLower or pathDisplay', {
+      fileId: file.id,
+      name: file.name,
+    });
+    await context.state.delete(stateKey).catch(() => {});
+    return 'skipped';
+  }
+
   try {
-    const downloaded = await client.downloadFile(file.pathLower || file.pathDisplay);
+    const downloaded = await client.downloadFile(downloadPath);
+
+    const estimatedSizeBytes = Math.ceil(downloaded.contentBase64.length * 3 / 4);
+    if (estimatedSizeBytes > MAX_FILE_SIZE_BYTES) {
+      context.logger.warn('Skipping oversized Dropbox file', {
+        fileId: file.id,
+        pathDisplay: file.pathDisplay,
+        estimatedSizeBytes,
+        maxSizeBytes: MAX_FILE_SIZE_BYTES,
+      });
+      await context.state.delete(stateKey).catch(() => {});
+      return 'skipped';
+    }
+
     const importResult = await context.data.importDocument({
       fileName: file.name,
       contentType: 'application/pdf',
@@ -160,6 +189,16 @@ async function importSingleFile(
       pathDisplay: file.pathDisplay,
       error: toErrorMessage(error),
     });
+    try {
+      await context.state.delete(stateKey);
+    } catch (deleteError) {
+      context.logger.warn('Failed to clear pending state key after import failure; setting short TTL', {
+        stateKey,
+        error: toErrorMessage(deleteError),
+      });
+      // If delete fails, overwrite with a short TTL so it auto-expires
+      await context.state.set(stateKey, 'failed', { ttlSeconds: 300 }).catch(() => {});
+    }
     return 'failed';
   }
 }
