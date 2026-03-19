@@ -3,6 +3,7 @@ const DROPBOX_CONTENT_BASE = 'https://content.dropboxapi.com/2';
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
 const MAX_REQUEST_ATTEMPTS = 3;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 interface DropboxListFolderFileEntry {
   '.tag': 'file';
@@ -294,8 +295,10 @@ async function requestWithRetry(url: string, init: RequestInit, method = 'GET'):
   const isIdempotent = method === 'GET';
 
   for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, { ...init, signal: controller.signal });
       if (!response.ok) {
         const body = await response.text();
         const error = new DropboxApiError(
@@ -332,6 +335,8 @@ async function requestWithRetry(url: string, init: RequestInit, method = 'GET'):
         continue;
       }
       throw error;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

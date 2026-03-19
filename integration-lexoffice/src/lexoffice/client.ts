@@ -2,6 +2,7 @@ const DEFAULT_LEXOFFICE_BASE_URL = 'https://api.lexoffice.io/v1';
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
 const MAX_REQUEST_ATTEMPTS = 3;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export class LexofficeApiError extends Error {
   public readonly status: number;
@@ -115,8 +116,10 @@ async function requestWithRetry<T>(url: string, init: RequestInit, method: strin
   const isIdempotent = method === 'GET';
 
   for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, { ...init, signal: controller.signal });
       const body = await response.text();
 
       if (!response.ok) {
@@ -158,6 +161,8 @@ async function requestWithRetry<T>(url: string, init: RequestInit, method: strin
         continue;
       }
       throw error;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
