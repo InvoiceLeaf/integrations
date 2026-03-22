@@ -3,6 +3,7 @@ const XERO_ACCOUNTING_BASE_URL = 'https://api.xero.com/api.xro/2.0';
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
 const MAX_REQUEST_ATTEMPTS = 3;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export interface XeroConnection {
   id: string;
@@ -205,8 +206,9 @@ export class XeroAccountingClient {
   }
 }
 
-function escapeWhereValue(value: string): string {
-  return value.replace(/"/g, '\\"');
+export function escapeWhereValue(value: string): string {
+  // Escape backslashes first, then double quotes, to prevent injection via \"
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 async function requestWithRetry<T>(
@@ -219,8 +221,10 @@ async function requestWithRetry<T>(
   const isIdempotent = method === 'GET';
 
   for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, { ...init, signal: controller.signal });
       const body = await response.text();
 
       if (!response.ok) {
@@ -270,6 +274,8 @@ async function requestWithRetry<T>(
         continue;
       }
       throw error;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
