@@ -23,10 +23,10 @@
   "author": "InvoiceLeaf <support@invoiceleaf.com>",
   "license": "MIT",
   "peerDependencies": {
-    "@invoiceleaf/integration-sdk": "^1.6.0"
+    "@invoiceleaf/integration-sdk": "^1.7.0"
   },
   "devDependencies": {
-    "@invoiceleaf/integration-sdk": "^1.6.0",
+    "@invoiceleaf/integration-sdk": "^1.7.0",
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0"
   },
