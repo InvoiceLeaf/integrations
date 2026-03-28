@@ -1,9 +1,12 @@
+import {
+  requestWithRetry,
+  requestResponseWithRetry,
+  trimToUndefined,
+} from '@invoiceleaf/integration-sdk';
+import type { RequestWithRetryOptions } from '@invoiceleaf/integration-sdk';
+
 const DROPBOX_API_BASE = 'https://api.dropboxapi.com/2';
 const DROPBOX_CONTENT_BASE = 'https://content.dropboxapi.com/2';
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
-const MAX_REQUEST_ATTEMPTS = 3;
-const REQUEST_TIMEOUT_MS = 30_000;
 
 interface DropboxListFolderFileEntry {
   '.tag': 'file';
@@ -85,6 +88,13 @@ export class DropboxApiError extends Error {
   }
 }
 
+function retryOptions(method: string): RequestWithRetryOptions {
+  return {
+    method,
+    createError: (message, status, responseBody) => new DropboxApiError(message, status, responseBody),
+  };
+}
+
 export class DropboxClient {
   private readonly accessToken: string;
 
@@ -133,16 +143,32 @@ export class DropboxClient {
     const url = `${DROPBOX_CONTENT_BASE}/files/download`;
     const arg = JSON.stringify({ path });
 
-    const response = await requestWithRetry(url, {
+    const response = await requestResponseWithRetry(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
         'Dropbox-API-Arg': arg,
       },
-    }, 'GET'); // download is a read operation despite using POST
+    }, {
+      method: 'POST',
+      idempotent: true, // download is a read operation despite using POST
+      createError: (message, status, responseBody) => new DropboxApiError(message, status, responseBody),
+    });
 
     const rawMetadata = response.headers.get('dropbox-api-result');
-    const metadata = rawMetadata ? (JSON.parse(rawMetadata) as DropboxDownloadMetadata) : {};
+    let metadata: Partial<DropboxDownloadMetadata> = {};
+    if (rawMetadata) {
+      try {
+        metadata = JSON.parse(rawMetadata) as DropboxDownloadMetadata;
+      } catch (e) {
+        console.error(
+          '[DropboxClient] Failed to parse dropbox-api-result header for path=%s: %s',
+          path,
+          rawMetadata.slice(0, 200),
+          e
+        );
+      }
+    }
 
     const bytes = Buffer.from(await response.arrayBuffer());
     return {
@@ -237,7 +263,7 @@ export class DropboxClient {
   }
 }
 
-async function rpc<T>(
+function rpc<T>(
   method: 'POST',
   path: string,
   body: unknown,
@@ -256,10 +282,10 @@ async function rpc<T>(
   };
 
   // Dropbox RPC calls (list_folder, get_current_account) are read operations despite using POST
-  return requestJsonWithRetry<T>(url, init, 'GET');
+  return requestWithRetry<T>(url, init, { ...retryOptions('POST'), idempotent: true });
 }
 
-async function content<T>(
+function content<T>(
   method: 'POST',
   path: string,
   body: Buffer,
@@ -278,69 +304,7 @@ async function content<T>(
   };
 
   // Content uploads are mutating operations
-  return requestJsonWithRetry<T>(url, init, 'POST');
-}
-
-async function requestJsonWithRetry<T>(url: string, init: RequestInit, method: string): Promise<T> {
-  const response = await requestWithRetry(url, init, method);
-  const body = await response.text();
-  if (body.length === 0) {
-    return {} as T;
-  }
-  return JSON.parse(body) as T;
-}
-
-async function requestWithRetry(url: string, init: RequestInit, method = 'GET'): Promise<Response> {
-  let lastError: Error | null = null;
-  const isIdempotent = method === 'GET';
-
-  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    try {
-      const response = await fetch(url, { ...init, signal: controller.signal });
-      if (!response.ok) {
-        const body = await response.text();
-        const error = new DropboxApiError(
-          `Dropbox API request failed with status ${response.status}`,
-          response.status,
-          body
-        );
-
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(response.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
-
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-
-        throw error;
-      }
-
-      return response;
-    } catch (error) {
-      lastError = error as Error;
-      if (error instanceof DropboxApiError) {
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(error.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
-        await sleep(backoffMs(attempt));
-        continue;
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  throw lastError ?? new Error('Dropbox request failed after retries.');
+  return requestWithRetry<T>(url, init, retryOptions('POST'));
 }
 
 function normalizePath(path: string): string {
@@ -349,20 +313,4 @@ function normalizePath(path: string): string {
     return '';
   }
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function backoffMs(attempt: number): number {
-  return Math.min(2000, 250 * 2 ** (attempt - 1));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

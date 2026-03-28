@@ -1,8 +1,9 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, UserActionInput } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type { HandlerResult, OutlookConfig } from '../types.js';
 import { OutlookApiError, OutlookClient } from '../outlook/client.js';
 
-export const testConnection: IntegrationHandler<unknown, HandlerResult, OutlookConfig> = async (
+export const testConnection: IntegrationHandler<UserActionInput, HandlerResult, OutlookConfig> = async (
   _input,
   context: IntegrationContext<OutlookConfig>
 ): Promise<HandlerResult> => {
@@ -53,11 +54,4 @@ export const testConnection: IntegrationHandler<unknown, HandlerResult, OutlookC
 
 function truncate(value: string): string {
   return value.length > 280 ? `${value.slice(0, 277)}...` : value;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
 }

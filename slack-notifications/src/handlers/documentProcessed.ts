@@ -5,6 +5,7 @@
  */
 
 import type { IntegrationContext, IntegrationHandler, Company } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type {
   DocumentEventInput,
   DocumentNotificationResult,
@@ -44,6 +45,10 @@ export const handleDocumentProcessed: IntegrationHandler<
     };
   }
 
+  if (!config.webhookUrl) {
+    return { success: false, error: 'Slack webhook URL is not configured.' };
+  }
+
   // Fetch document details
   let document;
   try {
@@ -52,7 +57,7 @@ export const handleDocumentProcessed: IntegrationHandler<
     logger.error('Failed to fetch document', { documentId, error });
     return {
       success: false,
-      error: `Failed to fetch document: ${(error as Error).message}`,
+      error: `Failed to fetch document: ${toErrorMessage(error)}`,
     };
   }
   if (!document?.id) {
@@ -98,7 +103,7 @@ export const handleDocumentProcessed: IntegrationHandler<
     } catch (error) {
       logger.warn('Failed to fetch company', {
         companyId,
-        error: (error as Error).message,
+        error: toErrorMessage(error),
       });
     }
   }
@@ -136,12 +141,12 @@ export const handleDocumentProcessed: IntegrationHandler<
   } catch (error) {
     logger.error('Failed to send Slack notification', {
       documentId: document.id,
-      error: (error as Error).message,
+      error: toErrorMessage(error),
     });
 
     return {
       success: false,
-      error: `Failed to send Slack notification: ${(error as Error).message}`,
+      error: `Failed to send Slack notification: ${toErrorMessage(error)}`,
       documentId: document.id,
     };
   }

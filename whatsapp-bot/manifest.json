@@ -9,9 +9,21 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "whatsapp",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/whatsapp-bot/icon.svg",
   "category": "communication",
-  "tags": ["whatsapp", "notifications", "bot", "messaging"],
-  "dataAccess": ["documents", "companies", "categories", "spaces", "exports"],
+  "tags": [
+    "whatsapp",
+    "notifications",
+    "bot",
+    "messaging"
+  ],
+  "dataAccess": [
+    "documents",
+    "companies",
+    "categories",
+    "spaces",
+    "exports"
+  ],
   "externalAuth": [],
   "triggers": [
     {
@@ -19,7 +31,9 @@
       "type": "event",
       "name": "Document Processed",
       "description": "Triggered when invoice processing completes",
-      "events": ["document.processed"],
+      "events": [
+        "document.processed"
+      ],
       "handler": "buildDocumentProcessedMessage",
       "configurable": true
     },
@@ -28,7 +42,9 @@
       "type": "event",
       "name": "Export Ready",
       "description": "Triggered when an export is ready",
-      "events": ["export.completed"],
+      "events": [
+        "export.completed"
+      ],
       "handler": "buildExportCompletedMessage",
       "configurable": true
     },
@@ -37,7 +53,9 @@
       "type": "event",
       "name": "Reminder Triggered",
       "description": "Triggered when a reminder fires and message text is ready",
-      "events": ["reminder.triggered"],
+      "events": [
+        "reminder.triggered"
+      ],
       "handler": "buildReminderTriggeredMessage",
       "configurable": true
     },
@@ -135,13 +153,17 @@
         "default": 1000
       }
     },
-    "required": ["waPhoneNumber"]
+    "required": [
+      "waPhoneNumber"
+    ]
   },
   "ui": {
     "configGroups": [
       {
         "title": "Connection",
-        "fields": ["waPhoneNumber"]
+        "fields": [
+          "waPhoneNumber"
+        ]
       },
       {
         "title": "Notifications",

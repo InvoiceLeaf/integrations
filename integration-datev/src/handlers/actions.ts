@@ -1,4 +1,5 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, UserActionInput } from '@invoiceleaf/integration-sdk';
+import { trimToUndefined } from '@invoiceleaf/integration-sdk';
 import {
   DATEV_API_BASE_URLS,
   DATEV_AUTH_DISCOVERY_URLS,
@@ -25,7 +26,6 @@ import type {
   JobInput,
   ListEndpointOptionsInput,
   ListEndpointOptionsResult,
-  TestConnectionResult,
   UploadDxsoJobFileInput,
 } from '../types.js';
 
@@ -36,35 +36,6 @@ export interface DatevRuntime {
   apiBaseUrl: string;
   xDatevClientId: string;
 }
-
-export const testConnection: IntegrationHandler<unknown, TestConnectionResult, DatevIntegrationConfig> = async (
-  _input,
-  context
-): Promise<TestConnectionResult> => {
-  try {
-    const runtime = await buildRuntime(context);
-    const clients = await runtime.client.listClients();
-
-    return {
-      success: true,
-      connected: true,
-      message: `DATEV connection is valid (${clients.length} accessible client(s)).`,
-      authProvider: runtime.authProvider as TestConnectionResult['authProvider'],
-      environment: runtime.environment,
-      apiBaseUrl: runtime.apiBaseUrl,
-      xDatevClientId: runtime.xDatevClientId,
-      clientCount: clients.length,
-      sampleClients: clients.slice(0, 10),
-    };
-  } catch (error) {
-    context.logger.error('DATEV test connection failed', { error: toErrorMessage(error) });
-    return {
-      success: false,
-      connected: false,
-      error: toErrorMessage(error),
-    };
-  }
-};
 
 export const discoverAuthEndpoints: IntegrationHandler<
   DiscoverAuthEndpointsInput,
@@ -87,10 +58,10 @@ export const discoverAuthEndpoints: IntegrationHandler<
       },
     });
 
-    const payload = (await response.json()) as Record<string, unknown>;
     if (!response.ok) {
       throw new Error(`OIDC discovery request failed with status ${response.status}.`);
     }
+    const payload = (await response.json()) as Record<string, unknown>;
 
     return {
       success: true,
@@ -203,7 +174,7 @@ export const callDatevEndpoint: IntegrationHandler<
   }
 };
 
-export const listClients: IntegrationHandler<unknown, HandlerResult & { clients?: unknown[] }, DatevIntegrationConfig> =
+export const listClients: IntegrationHandler<UserActionInput, HandlerResult & { clients?: unknown[] }, DatevIntegrationConfig> =
   async (_input, context) => {
     try {
       const runtime = await buildRuntime(context);
@@ -363,7 +334,9 @@ export const finalizeDxsoJob: IntegrationHandler<
     const runtime = await buildRuntime(context);
     const clientId = requireClientId(input?.clientId, context.config.defaultClientId);
     const jobId = requireJobId(input?.jobId);
-    const jobStatus = await runtime.client.finalizeDxsoJob(clientId, jobId, input?.ready ?? true);
+    const rawReady = input?.ready;
+    const ready = rawReady === undefined ? true : rawReady !== false && rawReady !== ('false' as unknown);
+    const jobStatus = await runtime.client.finalizeDxsoJob(clientId, jobId, ready);
 
     return {
       success: true,
@@ -536,10 +509,5 @@ function truncate(value: string, maxLength: number): string {
   return `${value.slice(0, maxLength - 3)}...`;
 }
 
-export function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
+// Re-export trimToUndefined from the SDK for consumers that previously imported it from this module.
+export { trimToUndefined };

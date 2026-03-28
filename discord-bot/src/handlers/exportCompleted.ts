@@ -1,9 +1,7 @@
-import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
+import type { IntegrationHandler, HandlerResult, ExportCompletedInput } from '@invoiceleaf/integration-sdk';
+import type { DiscordBotConfig } from '../types.js';
 
-export const buildExportCompletedMessage = async (
-  input: unknown,
-  context: IntegrationContext
-) => {
+export const buildExportCompletedMessage: IntegrationHandler<ExportCompletedInput, HandlerResult, DiscordBotConfig> = async (input, context) => {
   try {
     if (!input || typeof input !== 'object') {
       context.logger.warn('Invalid input for export.completed', { input });
@@ -19,8 +17,8 @@ export const buildExportCompletedMessage = async (
     };
   } catch (error) {
     context.logger.error('Failed to build export.completed payload', {
-      error: (error as Error).message,
+      error: error instanceof Error ? error.message : String(error),
     });
-    return { success: false, error: `Handler error: ${(error as Error).message}` };
+    return { success: false, error: `Handler error: ${error instanceof Error ? error.message : String(error)}` };
   }
 };

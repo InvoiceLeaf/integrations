@@ -4,7 +4,7 @@
  * Sends a test message to verify the Slack webhook is configured correctly.
  */
 
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage, type IntegrationContext, type IntegrationHandler } from '@invoiceleaf/integration-sdk';
 import type { HandlerResult, SlackIntegrationConfig } from '../types.js';
 import { SlackClient, SlackApiError, SlackWebhookValidationError } from '../slack/client.js';
 import { buildTestConnectionBlocks, statusAttachment } from '../slack/blocks.js';
@@ -37,7 +37,7 @@ export const sendTestMessage: IntegrationHandler<
   input: TestConnectionInput,
   ctx: IntegrationContext<SlackIntegrationConfig>
 ): Promise<TestConnectionResult> => {
-  const { spaceId } = input;
+  const spaceId = input.spaceId || ctx.spaceId;
   const { config, logger, userId } = ctx;
 
   logger.info('Sending test message to Slack', { spaceId, userId });
@@ -107,12 +107,12 @@ export const sendTestMessage: IntegrationHandler<
     }
 
     logger.error('Unexpected error sending test message', {
-      error: (error as Error).message,
+      error: toErrorMessage(error),
     });
 
     return {
       success: false,
-      error: `Failed to send test message: ${(error as Error).message}`,
+      error: `Failed to send test message: ${toErrorMessage(error)}`,
     };
   }
 };

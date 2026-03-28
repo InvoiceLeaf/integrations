@@ -1,8 +1,9 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, UserActionInput } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type { DropboxIntegrationConfig, HandlerResult } from '../types.js';
 import { DropboxApiError, DropboxClient } from '../dropbox/client.js';
 
-export const testConnection: IntegrationHandler<unknown, HandlerResult, DropboxIntegrationConfig> = async (
+export const testConnection: IntegrationHandler<UserActionInput, HandlerResult, DropboxIntegrationConfig> = async (
   _input,
   context: IntegrationContext<DropboxIntegrationConfig>
 ): Promise<HandlerResult> => {
@@ -50,11 +51,4 @@ export const testConnection: IntegrationHandler<unknown, HandlerResult, DropboxI
 
 function truncate(value: string): string {
   return value.length > 280 ? `${value.slice(0, 277)}...` : value;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
 }

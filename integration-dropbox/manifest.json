@@ -9,9 +9,17 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "folder",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-dropbox/icon.svg",
   "category": "file-storage",
-  "tags": ["dropbox", "files", "pdf", "sync"],
-  "dataAccess": ["documents"],
+  "tags": [
+    "dropbox",
+    "files",
+    "pdf",
+    "sync"
+  ],
+  "dataAccess": [
+    "documents"
+  ],
   "externalAuth": [
     {
       "provider": "dropbox",
@@ -91,7 +99,9 @@
       "icon": "upload",
       "inputSchema": {
         "type": "object",
-        "required": ["documentId"],
+        "required": [
+          "documentId"
+        ],
         "properties": {
           "documentId": {
             "type": "string"
@@ -160,12 +170,21 @@
       {
         "title": "Import",
         "description": "Configure Dropbox PDF crawling",
-        "fields": ["rootPath", "recursive", "maxFilesPerRun", "stateKeyPrefix", "dedupeTtlSeconds", "importSource"]
+        "fields": [
+          "rootPath",
+          "recursive",
+          "maxFilesPerRun",
+          "stateKeyPrefix",
+          "dedupeTtlSeconds",
+          "importSource"
+        ]
       },
       {
         "title": "Upload",
         "description": "Configure default upload destination",
-        "fields": ["uploadTargetPath"]
+        "fields": [
+          "uploadTargetPath"
+        ]
       }
     ]
   }

@@ -9,6 +9,8 @@ export {
   formatNumber,
   truncate,
   escapeSlackMrkdwn,
+  toEpochSeconds,
+  formatSlackDate,
 } from './formatters.js';
 
 export {

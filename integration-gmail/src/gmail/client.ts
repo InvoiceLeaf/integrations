@@ -1,7 +1,6 @@
+import { requestWithRetry, type RequestWithRetryOptions } from '@invoiceleaf/integration-sdk';
+
 const GMAIL_BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/me';
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
-const MAX_REQUEST_ATTEMPTS = 3;
 
 interface GmailMessageListResponse {
   messages?: Array<{ id: string }>;
@@ -67,6 +66,11 @@ export class GmailApiError extends Error {
   }
 }
 
+const GMAIL_RETRY_OPTIONS: RequestWithRetryOptions = {
+  method: 'GET',
+  createError: (message, status, responseBody) => new GmailApiError(message, status, responseBody),
+};
+
 export class GmailClient {
   private readonly accessToken: string;
 
@@ -83,17 +87,22 @@ export class GmailClient {
   }
 
   async listMessages(input: {
-    query: string;
+    query?: string | null;
     maxResults: number;
     includeSpamTrash?: boolean;
   }): Promise<GmailMessage[]> {
-    const response = await this.request<GmailMessageListResponse>('GET', '/messages', undefined, {
-      q: input.query,
+    const params: Record<string, string> = {
       maxResults: String(input.maxResults),
       includeSpamTrash: input.includeSpamTrash ? 'true' : 'false',
-    });
+    };
 
-    return (response.messages ?? []).filter((item) => typeof item.id === 'string');
+    if (input.query != null && input.query.trim().length > 0) {
+      params.q = input.query.trim();
+    }
+
+    const response = await this.request<GmailMessageListResponse>('GET', '/messages', undefined, params);
+
+    return (response.messages ?? []).filter((item) => item != null && typeof item.id === 'string');
   }
 
   async getMessage(messageId: string): Promise<GmailMessageDetails> {
@@ -189,62 +198,8 @@ export class GmailClient {
       body,
     };
 
-    return requestWithRetry<T>(url.toString(), init, method);
+    return requestWithRetry<T>(url.toString(), init, GMAIL_RETRY_OPTIONS);
   }
-}
-
-async function requestWithRetry<T>(url: string, init: RequestInit, method = 'GET'): Promise<T> {
-  let lastError: Error | null = null;
-  const isIdempotent = method === 'GET';
-
-  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
-    try {
-      const response = await fetch(url, init);
-      const body = await response.text();
-
-      if (!response.ok) {
-        const error = new GmailApiError(
-          `Gmail API request failed with status ${response.status}`,
-          response.status,
-          body
-        );
-
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(response.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
-
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-
-        throw error;
-      }
-
-      if (body.length === 0) {
-        return {} as T;
-      }
-
-      return JSON.parse(body) as T;
-    } catch (error) {
-      lastError = error as Error;
-      if (error instanceof GmailApiError) {
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(error.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
-        await sleep(backoffMs(attempt));
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  throw lastError ?? new Error('Gmail request failed after retries.');
 }
 
 function findHeader(
@@ -261,12 +216,4 @@ function findHeader(
     }
   }
   return undefined;
-}
-
-function backoffMs(attempt: number): number {
-  return Math.min(2000, 250 * 2 ** (attempt - 1));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -1,10 +1,10 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage, type IntegrationContext, type IntegrationHandler, type UserActionInput } from '@invoiceleaf/integration-sdk';
 import type { GetMyInvoicesIntegrationConfig, TestConnectionResult } from '../types.js';
 import { GetMyInvoicesApiError, GetMyInvoicesClient } from '../getmyinvoices/client.js';
 import { resolveGetMyInvoicesApiKey } from './auth.js';
 
 export const testConnection: IntegrationHandler<
-  unknown,
+  UserActionInput,
   TestConnectionResult,
   GetMyInvoicesIntegrationConfig
 > = async (
@@ -60,11 +60,4 @@ export const testConnection: IntegrationHandler<
 
 function truncate(value: string): string {
   return value.length > 280 ? `${value.slice(0, 277)}...` : value;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return String(error);
 }

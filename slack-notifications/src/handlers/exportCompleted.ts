@@ -4,9 +4,9 @@
  * Sends a Slack notification when an export is ready for download.
  */
 
-import type { IntegrationContext, IntegrationHandler, Export } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, Export, ExportCompletedInput } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type {
-  ExportCompletedInput,
   HandlerResult,
   SlackIntegrationConfig,
 } from '../types.js';
@@ -38,8 +38,6 @@ export const handleExportCompleted: IntegrationHandler<
 ): Promise<ExportCompletedResult> => {
   const { exportId } = input;
   const spaceId = input.spaceId || ctx.spaceId;
-  const documentCount = input.documentCount;
-  const format = input.format;
   const { config, logger, data } = ctx;
 
   // Check if this notification type is enabled
@@ -52,6 +50,10 @@ export const handleExportCompleted: IntegrationHandler<
     };
   }
 
+  if (!config.webhookUrl) {
+    return { success: false, error: 'Slack webhook URL is not configured.' };
+  }
+
   // Try to fetch export details from the API, fall back to input data
   let exportData: Export;
   try {
@@ -59,15 +61,16 @@ export const handleExportCompleted: IntegrationHandler<
   } catch (error) {
     logger.warn('Could not fetch export details, using input data', {
       exportId,
-      error: (error as Error).message,
+      error: toErrorMessage(error),
     });
-    // Create a minimal export object from input
+    // Create a minimal export object from the input payload
     exportData = {
       id: exportId,
       spaceId,
-      format: format || 'unknown',
+      format: input.export.format,
       status: 'COMPLETED',
-      documentCount: documentCount || 0,
+      downloadUrl: input.export.downloadUrl,
+      documentCount: input.export.documentCount ?? 0,
       createdAt: new Date().toISOString(),
       completedAt: new Date().toISOString(),
     };
@@ -75,7 +78,7 @@ export const handleExportCompleted: IntegrationHandler<
 
   // Build Slack message
   const blocks = buildExportCompletedBlocks(exportData, spaceId);
-  const fallbackText = `Export ready: ${exportData.documentCount || 0} documents in ${exportData.format.toUpperCase()} format`;
+  const fallbackText = `Export ready: ${exportData.documentCount || 0} documents in ${exportData.format?.toUpperCase() ?? 'UNKNOWN'} format`;
 
   // Send to Slack
   try {
@@ -104,12 +107,12 @@ export const handleExportCompleted: IntegrationHandler<
   } catch (error) {
     logger.error('Failed to send Slack notification', {
       exportId,
-      error: (error as Error).message,
+      error: toErrorMessage(error),
     });
 
     return {
       success: false,
-      error: `Failed to send Slack notification: ${(error as Error).message}`,
+      error: `Failed to send Slack notification: ${toErrorMessage(error)}`,
       exportId,
     };
   }

@@ -1,9 +1,7 @@
-import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
+import type { IntegrationHandler, HandlerResult, UserActionInput } from '@invoiceleaf/integration-sdk';
+import type { WhatsAppBotConfig } from '../types.js';
 
-export const sendTestWhatsAppMessage = async (
-  _input: unknown,
-  context: IntegrationContext
-) => {
+export const sendTestWhatsAppMessage: IntegrationHandler<UserActionInput, HandlerResult, WhatsAppBotConfig> = async (_input, context) => {
   try {
     context.logger.info('Building WhatsApp test payload');
     return {
@@ -14,8 +12,8 @@ export const sendTestWhatsAppMessage = async (
     };
   } catch (error) {
     context.logger.error('Failed to build test message payload', {
-      error: (error as Error).message,
+      error: error instanceof Error ? error.message : String(error),
     });
-    return { success: false, error: `Handler error: ${(error as Error).message}` };
+    return { success: false, error: `Handler error: ${error instanceof Error ? error.message : String(error)}` };
   }
 };

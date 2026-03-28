@@ -265,6 +265,7 @@ export interface SlackAttachment {
   fields?: AttachmentField[];
   footer?: string;
   footer_icon?: string;
+  /** Timestamp displayed in attachment footer. Must be epoch SECONDS (not milliseconds). */
   ts?: number;
 }
 
@@ -284,32 +285,14 @@ export interface AttachmentField {
 /**
  * Input for document-related event handlers.
  *
- * Aligned with SDK's DocumentEventInput shape (see integration-sdk/src/helpers/defineHandler.ts).
- * TODO: Replace with `extends DocumentEventInput` from SDK once DocumentEventInput is published
- * in the compiled @invoiceleaf/integration-sdk package (see INV-707).
+ * Extends the SDK's DocumentEventInput with slack-notification-specific fields.
+ * documentId is required for notification handlers (optional in SDK base type).
  */
-export interface DocumentEventInput {
+export interface DocumentEventInput extends SdkDocumentEventInput {
   /** The document ID — required for notification handlers. */
   documentId: string;
-  /** Nested document reference (SDK compat). */
-  document?: {
-    id?: string;
-  };
   /** Space context for the event. */
   spaceId?: string;
-}
-
-/**
- * Input for export completed event handler.
- */
-export interface ExportCompletedInput {
-  exportId: string;
-  export: Export;
-  spaceId?: string;
-  userId?: string;
-  documentCount?: number;
-  format?: string;
-  timestamp?: string;
 }
 
 /**
@@ -410,7 +393,11 @@ export type {
 // Document Helper Functions
 // ============================================================================
 
-import type { Document, Export } from '@invoiceleaf/integration-sdk';
+import type {
+  Document,
+  DocumentEventInput as SdkDocumentEventInput,
+  Export,
+} from '@invoiceleaf/integration-sdk';
 
 /**
  * Gets the vendor/supplier name from a document.

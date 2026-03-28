@@ -1,4 +1,5 @@
 import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { trimToUndefined, toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type {
   GoogleDriveIntegrationConfig,
   UploadDocumentInput,
@@ -97,17 +98,3 @@ export const uploadDocument: IntegrationHandler<
   }
 };
 
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}

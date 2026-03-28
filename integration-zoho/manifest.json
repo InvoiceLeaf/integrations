@@ -9,9 +9,18 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "book",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-zoho/icon.svg",
   "category": "accounting",
-  "tags": ["zoho", "zoho-books", "accounting", "invoice-sync"],
-  "dataAccess": ["documents", "companies"],
+  "tags": [
+    "zoho",
+    "zoho-books",
+    "accounting",
+    "invoice-sync"
+  ],
+  "dataAccess": [
+    "documents",
+    "companies"
+  ],
   "externalAuth": [
     {
       "provider": "zoho-books",
@@ -120,17 +129,31 @@
       {
         "title": "Zoho Connection",
         "description": "Organization and API endpoint behavior",
-        "fields": ["organizationId", "apiBaseUrl"]
+        "fields": [
+          "organizationId",
+          "apiBaseUrl"
+        ]
       },
       {
         "title": "Sync Limits",
         "description": "Checkpoint window and per-run throughput",
-        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments", "requireProcessedDocuments"]
+        "fields": [
+          "initialSyncLookbackHours",
+          "maxDocumentsPerRun",
+          "pageSize",
+          "includeDraftDocuments",
+          "requireProcessedDocuments"
+        ]
       },
       {
         "title": "Mapping Defaults",
         "description": "Numbering and customer defaults",
-        "fields": ["invoiceNumberPrefix", "defaultItemId", "fallbackCustomerName", "syncPayables"]
+        "fields": [
+          "invoiceNumberPrefix",
+          "defaultItemId",
+          "fallbackCustomerName",
+          "syncPayables"
+        ]
       }
     ]
   }

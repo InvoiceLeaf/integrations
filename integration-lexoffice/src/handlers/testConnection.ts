@@ -1,9 +1,10 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, UserActionInput } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage, trimToUndefined } from '@invoiceleaf/integration-sdk';
 import type { LexofficeIntegrationConfig, TestConnectionResult } from '../types.js';
 import { LexofficeApiError, LexofficeClient } from '../lexoffice/client.js';
 
 export const testConnection: IntegrationHandler<
-  unknown,
+  UserActionInput,
   TestConnectionResult,
   LexofficeIntegrationConfig
 > = async (
@@ -60,8 +61,10 @@ async function resolveApiKey(
     if (key) {
       return key;
     }
-  } catch {
-    // Fallback handled below.
+  } catch (error) {
+    context.logger.warn('Failed to resolve lexoffice API key from credentials, falling back to config.', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   const fallback = trimToUndefined(context.config.apiKey);
@@ -72,21 +75,6 @@ async function resolveApiKey(
   throw new Error('Missing lexoffice API key.');
 }
 
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
 function truncate(value: string): string {
   return value.length > 280 ? `${value.slice(0, 277)}...` : value;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return String(error);
 }

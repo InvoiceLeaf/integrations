@@ -65,6 +65,7 @@ export interface CrawlResult extends HandlerResult {
   scannedAttachments: number;
   imported: number;
   duplicates: number;
+  /** Messages scanned that contained no PDF attachments. */
   skipped: number;
   failed: number;
 }

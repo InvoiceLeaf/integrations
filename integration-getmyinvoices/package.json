@@ -10,6 +10,8 @@
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
@@ -27,7 +29,8 @@
   "devDependencies": {
     "@invoiceleaf/integration-sdk": "^1.7.0",
     "@types/node": "^22.10.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0"
   },
   "engines": {
     "node": ">=20.0.0"

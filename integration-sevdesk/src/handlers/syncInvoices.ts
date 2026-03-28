@@ -1,5 +1,5 @@
-import type { Document, IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
-import { firstFinite } from '@invoiceleaf/integration-sdk';
+import type { Document, IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, toFiniteNumber, firstFinite, trimToUndefined } from '@invoiceleaf/integration-sdk';
 import type {
   SevdeskIntegrationConfig,
   SevdeskSyncState,
@@ -40,7 +40,7 @@ export interface RuntimeDefaults {
 }
 
 export const syncInvoices: IntegrationHandler<
-  unknown,
+  ScheduleInput,
   SyncInvoicesResult,
   SevdeskIntegrationConfig
 > = async (
@@ -116,7 +116,7 @@ export const syncInvoices: IntegrationHandler<
       const pageResult = await context.data.listDocuments({
         startDate: Number.isFinite(parsedStartDate) ? parsedStartDate : Date.parse(fallbackFromDate),
         page,
-        size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
+        limit: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
 
       if (pageResult.items.length === 0) {
@@ -244,6 +244,10 @@ export async function syncSingleDocument(
 ): Promise<{ id: string; invoiceNumber?: string; status?: string | number }> {
   const contact = await resolveContact(context, client, document, runtimeDefaults, contactCache);
 
+  if (!contact.id) {
+    throw new Error(`Failed to resolve sevDesk contact for document ${document.id} — contact has no id`);
+  }
+
   const existingMapping = await context.mappings.get({
     system: SYSTEM,
     entity: ENTITY_INVOICE,
@@ -269,7 +273,7 @@ export async function syncSingleDocument(
 
   const savedInvoice = await client.saveInvoice(payload);
   let syncedInvoice = savedInvoice;
-  if (runtimeDefaults.targetStatus === 200 && savedInvoice.id) {
+  if (runtimeDefaults.targetStatus >= 200 && savedInvoice.id) {
     syncedInvoice = await client.sendInvoiceBy(savedInvoice.id, runtimeDefaults.sendTypeForOpenStatus);
   }
 
@@ -332,7 +336,11 @@ async function resolveContact(
 ): Promise<SevdeskContact> {
   const company = pickCompanyForDocument(document);
   const companyId = trimToUndefined(company?.id);
-  const cacheKey = companyId ?? buildCompanyCacheKey(company) ?? `document:${document.id}`;
+  const contactName =
+    trimToUndefined(company?.name) ||
+    trimToUndefined(context.config.fallbackContactName) ||
+    'InvoiceLeaf Contact';
+  const cacheKey = companyId ?? buildCompanyCacheKey(company) ?? `fallback-name:${normalizeContactName(contactName)}`;
   const cached = contactCache.get(cacheKey);
   if (cached?.id) {
     return cached;
@@ -372,11 +380,6 @@ async function resolveContact(
     }
   }
 
-  const contactName =
-    trimToUndefined(company?.name) ||
-    trimToUndefined(context.config.fallbackContactName) ||
-    'InvoiceLeaf Contact';
-
   const createInput: SevdeskContactCreateInput = {
     name: contactName,
     categoryId: runtimeDefaults.contactCategoryId,
@@ -409,14 +412,23 @@ function buildCompanyCacheKey(company: Document['supplier'] | Document['receiver
   if (!name) {
     return undefined;
   }
-  const parts = [
-    name,
-    trimToUndefined(company?.taxId),
-    trimToUndefined(company?.vatId),
-    trimToUndefined(company?.street),
-    trimToUndefined(company?.zip),
-  ].filter(Boolean);
-  return `name:${parts.join('|')}`;
+  const normalized = normalizeContactName(name);
+  const taxId = trimToUndefined(company?.taxId);
+  const vatId = trimToUndefined(company?.vatId);
+  // Include address fields to differentiate same-name companies without tax IDs
+  const city = trimToUndefined(company?.city);
+  const zip = trimToUndefined(company?.zip);
+  if (taxId || vatId) {
+    return `company:${normalized}|${taxId ?? ''}|${vatId ?? ''}`;
+  }
+  if (city || zip) {
+    return `company-addr:${normalized}|${city ?? ''}|${zip ?? ''}`;
+  }
+  return `company-name:${normalized}`;
+}
+
+function normalizeContactName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 function pickCompanyForDocument(document: Document): Document['supplier'] | Document['receiver'] {
@@ -455,7 +467,7 @@ function buildInvoicePayload(input: BuildInvoicePayloadInput): SevdeskInvoiceUps
     taxText: input.runtimeDefaults.taxText,
     taxRate: toTaxRateFromAmounts(input.document.taxAmount, input.document.netAmount) ?? input.runtimeDefaults.defaultTaxRate,
     discount: input.document.discount ?? 0,
-    status: 100,
+    status: input.runtimeDefaults.targetStatus,
     invoiceNumber: input.invoiceNumber,
     header: input.invoiceNumber ? `Invoice ${input.invoiceNumber}` : undefined,
     address: formatAddress(company),
@@ -471,7 +483,7 @@ function buildLineItems(document: Document, runtimeDefaults: RuntimeDefaults): S
   for (const [index, item] of (document.lineItems ?? []).entries()) {
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
-    const computedLineAmount = firstFinite(item.netAmount, item.totalAmount, 0)!;
+    const computedLineAmount = firstFinite(item.netAmount, item.totalAmount, 0) ?? 0;
     const unitAmount = toFiniteNumber(item.unitAmount, computedLineAmount / safeQuantity);
     const taxRate =
       toTaxRateFromAmounts(item.taxAmount, item.netAmount) ??
@@ -480,7 +492,7 @@ function buildLineItems(document: Document, runtimeDefaults: RuntimeDefaults): S
     lineItems.push({
       name: trimToUndefined(item.name) || defaultLineDescription(document),
       quantity: safeQuantity,
-      price: unitAmount,
+      price: Math.abs(unitAmount),
       taxRate,
       unityId: runtimeDefaults.unityId,
       text: trimToUndefined(item.name),
@@ -499,7 +511,8 @@ function buildLineItems(document: Document, runtimeDefaults: RuntimeDefaults): S
     return filtered;
   }
 
-  const amount = firstFinite(document.netAmount, document.totalAmount, document.amountDue);
+  const rawAmount = firstFinite(document.netAmount, document.totalAmount, document.amountDue);
+  const amount = rawAmount !== undefined ? Math.abs(rawAmount) : undefined;
   if (amount === undefined || amount === 0) {
     throw new Error(
       `Document ${document.id} has no line items and no valid amount (netAmount, totalAmount, amountDue are all missing or zero). Cannot create a sevDesk invoice with price 0.`
@@ -558,8 +571,8 @@ function defaultLineDescription(document: Document): string {
   return trimToUndefined(document.description) || `Invoice ${document.invoiceId ?? document.id}`;
 }
 
-export function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean): boolean {
-  if (document.deleted) {
+export function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean = true): boolean {
+  if (!document.id || document.deleted || trimToUndefined(document.duplicateOfId)) {
     return false;
   }
 
@@ -576,25 +589,6 @@ export function isSyncableDocument(document: Document, includeDraftDocuments: bo
   }
 
   return true;
-}
-
-function toBoundedInt(
-  value: number | undefined,
-  fallback: number,
-  min: number,
-  max: number
-): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
 }
 
 function toBoundedNumber(
@@ -650,21 +644,6 @@ function toTaxRateFromAmounts(
     return undefined;
   }
   return Math.max(0, Math.min(100, Number(rate.toFixed(2))));
-}
-
-function toFiniteNumber(value: number | undefined, fallback: number | undefined): number {
-  if (Number.isFinite(value)) {
-    return value as number;
-  }
-  return fallback ?? 0;
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function toOptionalInt(value: number | string | undefined): number | undefined {

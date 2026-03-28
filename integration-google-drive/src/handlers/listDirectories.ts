@@ -1,4 +1,5 @@
 import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, trimToUndefined, toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type {
   GoogleDriveIntegrationConfig,
   ListDirectoriesInput,
@@ -51,32 +52,3 @@ export const listDirectories: IntegrationHandler<
     };
   }
 };
-
-function toBoundedInt(value: number | undefined, fallback: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}

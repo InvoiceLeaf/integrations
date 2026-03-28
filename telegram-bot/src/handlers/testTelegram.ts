@@ -1,9 +1,7 @@
-import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
+import type { IntegrationHandler, HandlerResult, UserActionInput } from '@invoiceleaf/integration-sdk';
+import type { TelegramBotConfig } from '../types.js';
 
-export const sendTestTelegramMessage = async (
-  _input: unknown,
-  context: IntegrationContext
-) => {
+export const sendTestTelegramMessage: IntegrationHandler<UserActionInput, HandlerResult, TelegramBotConfig> = async (_input, context) => {
   try {
     context.logger.info('Building Telegram test payload');
     return {
@@ -14,8 +12,8 @@ export const sendTestTelegramMessage = async (
     };
   } catch (error) {
     context.logger.error('Failed to build test message payload', {
-      error: (error as Error).message,
+      error: error instanceof Error ? error.message : String(error),
     });
-    return { success: false, error: `Handler error: ${(error as Error).message}` };
+    return { success: false, error: `Handler error: ${error instanceof Error ? error.message : String(error)}` };
   }
 };

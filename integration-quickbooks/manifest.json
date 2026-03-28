@@ -9,9 +9,18 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "book",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-quickbooks/icon.svg",
   "category": "accounting",
-  "tags": ["quickbooks", "intuit", "accounting", "invoice-sync"],
-  "dataAccess": ["documents", "companies"],
+  "tags": [
+    "quickbooks",
+    "intuit",
+    "accounting",
+    "invoice-sync"
+  ],
+  "dataAccess": [
+    "documents",
+    "companies"
+  ],
   "externalAuth": [
     {
       "provider": "quickbooks",
@@ -127,17 +136,32 @@
       {
         "title": "QuickBooks Connection",
         "description": "Realm and API endpoint behavior",
-        "fields": ["realmId", "apiBaseUrl"]
+        "fields": [
+          "realmId",
+          "apiBaseUrl"
+        ]
       },
       {
         "title": "Sync Limits",
         "description": "Checkpoint window and per-run throughput",
-        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments", "requireProcessedDocuments"]
+        "fields": [
+          "initialSyncLookbackHours",
+          "maxDocumentsPerRun",
+          "pageSize",
+          "includeDraftDocuments",
+          "requireProcessedDocuments"
+        ]
       },
       {
         "title": "Mapping Defaults",
         "description": "Numbering and accounting references",
-        "fields": ["invoiceNumberPrefix", "defaultSalesItemId", "defaultExpenseAccountId", "fallbackCustomerName", "fallbackVendorName"]
+        "fields": [
+          "invoiceNumberPrefix",
+          "defaultSalesItemId",
+          "defaultExpenseAccountId",
+          "fallbackCustomerName",
+          "fallbackVendorName"
+        ]
       }
     ]
   }

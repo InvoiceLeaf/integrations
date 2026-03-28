@@ -1,7 +1,6 @@
+import { requestWithRetry, trimToUndefined, type RequestWithRetryOptions } from '@invoiceleaf/integration-sdk';
+
 const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
-const MAX_REQUEST_ATTEMPTS = 3;
 
 interface GraphMessageSender {
   emailAddress?: {
@@ -70,6 +69,11 @@ export class OutlookApiError extends Error {
     this.responseBody = responseBody;
   }
 }
+
+const OUTLOOK_RETRY_OPTIONS: RequestWithRetryOptions = {
+  method: 'GET',
+  createError: (message, status, responseBody) => new OutlookApiError(message, status, responseBody),
+};
 
 export class OutlookClient {
   private readonly accessToken: string;
@@ -192,76 +196,6 @@ export class OutlookClient {
       body,
     };
 
-    return requestWithRetry<T>(url.toString(), init, method);
+    return requestWithRetry<T>(url.toString(), init, OUTLOOK_RETRY_OPTIONS);
   }
-}
-
-async function requestWithRetry<T>(url: string, init: RequestInit, method = 'GET'): Promise<T> {
-  let lastError: Error | null = null;
-  const isIdempotent = method === 'GET';
-
-  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
-    try {
-      const response = await fetch(url, init);
-      const body = await response.text();
-
-      if (!response.ok) {
-        const error = new OutlookApiError(
-          `Outlook API request failed with status ${response.status}`,
-          response.status,
-          body
-        );
-
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(response.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
-
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-
-        throw error;
-      }
-
-      if (body.length === 0) {
-        return {} as T;
-      }
-
-      return JSON.parse(body) as T;
-    } catch (error) {
-      lastError = error as Error;
-      if (error instanceof OutlookApiError) {
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(error.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
-        await sleep(backoffMs(attempt));
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  throw lastError ?? new Error('Outlook request failed after retries.');
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function backoffMs(attempt: number): number {
-  return Math.min(2000, 250 * 2 ** (attempt - 1));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

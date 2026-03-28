@@ -1,4 +1,5 @@
-import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
+import type { IntegrationHandler, HandlerResult } from '@invoiceleaf/integration-sdk';
+import type { DiscordBotConfig } from '../types.js';
 
 interface DocumentActionInput {
   operation: string;
@@ -6,10 +7,7 @@ interface DocumentActionInput {
   value?: unknown;
 }
 
-export const applyDocumentAction = async (
-  input: DocumentActionInput,
-  context: IntegrationContext
-) => {
+export const applyDocumentAction: IntegrationHandler<DocumentActionInput, HandlerResult, DiscordBotConfig> = async (input, context) => {
   try {
     if (!input.operation || !input.documentId) {
       context.logger.warn('Missing required fields for document action', { input });
@@ -31,10 +29,10 @@ export const applyDocumentAction = async (
     };
   } catch (error) {
     context.logger.error('Failed to apply document action', {
-      error: (error as Error).message,
+      error: error instanceof Error ? error.message : String(error),
       operation: input?.operation,
       documentId: input?.documentId,
     });
-    return { success: false, error: `Handler error: ${(error as Error).message}` };
+    return { success: false, error: `Handler error: ${error instanceof Error ? error.message : String(error)}` };
   }
 };

@@ -1,9 +1,7 @@
-import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
+import type { IntegrationHandler, HandlerResult, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import type { TelegramBotConfig } from '../types.js';
 
-export const buildWeeklySummaryMessage = async (
-  input: unknown,
-  context: IntegrationContext
-) => {
+export const buildWeeklySummaryMessage: IntegrationHandler<ScheduleInput, HandlerResult, TelegramBotConfig> = async (input, context) => {
   try {
     context.logger.info('Building Telegram payload for weekly summary', { input });
     return {
@@ -14,8 +12,8 @@ export const buildWeeklySummaryMessage = async (
     };
   } catch (error) {
     context.logger.error('Failed to build weekly summary payload', {
-      error: (error as Error).message,
+      error: error instanceof Error ? error.message : String(error),
     });
-    return { success: false, error: `Handler error: ${(error as Error).message}` };
+    return { success: false, error: `Handler error: ${error instanceof Error ? error.message : String(error)}` };
   }
 };

@@ -80,12 +80,12 @@ export class SlackClient {
       throw new SlackWebhookValidationError('Webhook URL is required');
     }
 
-    // Slack webhook URLs follow this pattern
-    const webhookPattern = /^https:\/\/hooks\.slack\.com\/services\/T[A-Z0-9]+\/B[A-Z0-9]+\/[a-zA-Z0-9]+$/;
+    // Slack webhook URLs: services require T.../B.../token structure; workflows and triggers are looser
+    const webhookPattern = /^https:\/\/hooks\.slack\.com\/(?:services\/T[A-Z0-9]+\/B[A-Z0-9]+\/[a-zA-Z0-9]+|(?:workflows|triggers)\/[a-zA-Z0-9/_-]+)$/;
 
     if (!webhookPattern.test(url)) {
       throw new SlackWebhookValidationError(
-        'Invalid Slack webhook URL format. Expected: https://hooks.slack.com/services/T.../B.../...'
+        'Invalid Slack webhook URL format. Expected: https://hooks.slack.com/{services,workflows,triggers}/...'
       );
     }
   }
@@ -104,7 +104,7 @@ export class SlackClient {
         await this.doSendMessage(message);
         return;
       } catch (error) {
-        lastError = error as Error;
+        lastError = error instanceof Error ? error : new Error(String(error));
 
         // Don't retry on validation errors or client errors (4xx except 429)
         if (error instanceof SlackApiError) {
@@ -121,7 +121,7 @@ export class SlackClient {
       }
     }
 
-    throw lastError;
+    throw lastError ?? new Error('All retry attempts exhausted');
   }
 
   /**
@@ -173,8 +173,9 @@ export class SlackClient {
         );
       }
 
+      const message = error instanceof Error ? error.message : String(error);
       throw new SlackApiError(
-        `Network error: ${(error as Error).message}`,
+        `Network error: ${message}`,
         0,
         ''
       );

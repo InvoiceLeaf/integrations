@@ -1,4 +1,5 @@
 import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type { HandlerResult, SendEmailInput, SmtpMailConfig } from '../types.js';
 import { toAddressList } from '../utils/dedupe.js';
 
@@ -32,12 +33,6 @@ export const sendEmail: IntegrationHandler<SendEmailInput, HandlerResult, SmtpMa
     }
 
     const result = await context.email.sendSmtpEmail({
-      smtpHost: context.config.smtpHost,
-      smtpPort: context.config.smtpPort,
-      smtpSecure: context.config.smtpSecure,
-      smtpUsername: context.config.smtpUsername,
-      smtpPassword: context.config.smtpPassword,
-      fromAddress: context.config.fromAddress,
       to: toAddressList(input.to),
       cc: toAddressList(input.cc),
       bcc: toAddressList(input.bcc),
@@ -56,10 +51,11 @@ export const sendEmail: IntegrationHandler<SendEmailInput, HandlerResult, SmtpMa
       details: { messageId: result.messageId },
     };
   } catch (error) {
-    context.logger.error('SMTP sendEmail failed', { error: (error as Error).message });
+    const message = toErrorMessage(error);
+    context.logger.error('SMTP sendEmail failed', { error: message });
     return {
       success: false,
-      error: `Failed to send email: ${(error as Error).message}`,
+      error: `Failed to send email: ${message}`,
     };
   }
 };

@@ -1,4 +1,5 @@
-import type { Document, IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { Document, IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, trimToUndefined } from '@invoiceleaf/integration-sdk';
 import type {
   LexofficeIntegrationConfig,
   LexofficeSyncState,
@@ -15,7 +16,7 @@ const DEFAULT_PAGE_SIZE = 50;
 const DEFAULT_MAX_DOCUMENTS_PER_RUN = 100;
 const MAX_REPORTED_FAILURES = 25;
 
-export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, LexofficeIntegrationConfig> = async (
+export const syncInvoices: IntegrationHandler<ScheduleInput, SyncInvoicesResult, LexofficeIntegrationConfig> = async (
   _input,
   context: IntegrationContext<LexofficeIntegrationConfig>
 ): Promise<SyncInvoicesResult> => {
@@ -81,7 +82,7 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Lexof
       const pageResult = await context.data.listDocuments({
         startDate: Number.isFinite(parsedStartDate) ? parsedStartDate : Date.parse(fallbackFromDate),
         page,
-        size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
+        limit: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
 
       if (pageResult.items.length === 0) {
@@ -233,8 +234,10 @@ async function resolveApiKey(
     if (key) {
       return key;
     }
-  } catch {
-    // Fallback handled below.
+  } catch (error) {
+    context.logger.warn('Failed to resolve lexoffice API key from credentials, falling back to config.', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   const fallback = trimToUndefined(context.config.apiKey);
@@ -251,8 +254,8 @@ function buildFallbackFileName(document: Document, prefix?: string): string {
   return `${safePrefix}-${invoice}.pdf`;
 }
 
-function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean): boolean {
-  if (document.deleted) {
+function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean = true): boolean {
+  if (!document.id || document.deleted || trimToUndefined(document.duplicateOfId)) {
     return false;
   }
 
@@ -260,7 +263,7 @@ function isSyncableDocument(document: Document, includeDraftDocuments: boolean, 
     return false;
   }
 
-  if (document.documentStatus === 'DRAFT' && !includeDraftDocuments) {
+  if (!includeDraftDocuments && document.documentStatus === 'DRAFT') {
     return false;
   }
 
@@ -268,34 +271,13 @@ function isSyncableDocument(document: Document, includeDraftDocuments: boolean, 
     return false;
   }
 
+  // Skip zero-amount documents — they indicate missing or invalid data
+  const amount = document.totalAmount ?? document.netAmount ?? document.amountDue;
+  if (amount === 0) {
+    return false;
+  }
+
   return true;
-}
-
-function toBoundedInt(
-  value: number | undefined,
-  fallback: number,
-  min: number,
-  max: number
-): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function toErrorMessage(error: unknown): string {

@@ -1,5 +1,5 @@
-import type { Document, IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
-import { firstFinite } from '@invoiceleaf/integration-sdk';
+import type { Document, IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, toFiniteNumber, firstFinite, trimToUndefined, toDateOnly, toDateOnlyFromTimestamp } from '@invoiceleaf/integration-sdk';
 import type {
   GetMyInvoicesDocumentType,
   GetMyInvoicesIntegrationConfig,
@@ -54,7 +54,7 @@ export interface RuntimeDefaults {
 }
 
 export const syncInvoices: IntegrationHandler<
-  unknown,
+  ScheduleInput,
   SyncInvoicesResult,
   GetMyInvoicesIntegrationConfig
 > = async (
@@ -143,7 +143,7 @@ export const syncInvoices: IntegrationHandler<
       const pageResult = await context.data.listDocuments({
         startDate: Number.isFinite(parsedStartDate) ? parsedStartDate : Date.parse(fallbackFromDate),
         page,
-        size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
+        limit: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
 
       if (pageResult.items.length === 0) {
@@ -551,7 +551,7 @@ interface BuildPayloadInput {
 
 function buildMetadataPayload(input: BuildPayloadInput): GetMyInvoicesDocumentMetadataInput {
   const documentType = chooseDocumentType(input.document, input.runtimeDefaults);
-  const documentDate = toDateOnly(input.document.invoiceDate) ?? toDateFromTimestamp(input.document.created);
+  const documentDate = toDateOnly(input.document.invoiceDate) ?? toDateOnlyFromTimestamp(input.document.created);
   const documentDueDate = toDateOnly(input.document.dueDate);
 
   return {
@@ -628,7 +628,8 @@ function buildLineItems(document: Document): GetMyInvoicesDocumentMetadataInput[
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
     const totalGross =
-      firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0))!;
+      firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ??
+      0;
     const unitNetPrice = toFiniteNumber(item.unitAmount, totalGross / safeQuantity);
     const taxPercentage = toTaxRateFromAmounts(item.taxAmount, item.netAmount);
 
@@ -671,6 +672,7 @@ function buildGmiCompanyCacheKey(
     normalizeString(trimToUndefined(company?.vatId)),
     normalizeString(trimToUndefined(company?.street)),
     normalizeString(trimToUndefined(company?.zip)),
+    normalizeString(trimToUndefined(company?.city)),
   ].filter(Boolean);
   return `name:${parts.join('|')}`;
 }
@@ -692,8 +694,8 @@ function buildDocumentNumber(document: Document, prefix?: string): string | unde
   return value.length > 0 ? value.slice(0, 120) : undefined;
 }
 
-export function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean): boolean {
-  if (document.deleted) {
+export function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean = true): boolean {
+  if (!document.id || document.deleted || trimToUndefined(document.duplicateOfId)) {
     return false;
   }
 
@@ -710,51 +712,6 @@ export function isSyncableDocument(document: Document, includeDraftDocuments: bo
   }
 
   return true;
-}
-
-function toBoundedInt(
-  value: number | undefined,
-  fallback: number,
-  min: number,
-  max: number
-): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
-}
-
-function toDateOnly(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(
-    date.getUTCDate()
-  ).padStart(2, '0')}`;
-}
-
-function toDateFromTimestamp(value: number | undefined): string | undefined {
-  if (!Number.isFinite(value)) {
-    return undefined;
-  }
-  const date = new Date(value as number);
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(
-    date.getUTCDate()
-  ).padStart(2, '0')}`;
 }
 
 function toOptionalAmountString(value: number | undefined): string | undefined {
@@ -780,13 +737,6 @@ function toTaxRateFromAmounts(
     return undefined;
   }
   return Math.max(0, Math.min(100, roundTo2(rate)));
-}
-
-function toFiniteNumber(value: number | undefined, fallback: number): number {
-  if (Number.isFinite(value)) {
-    return value as number;
-  }
-  return fallback;
 }
 
 function uniqueNumbers(values: Array<number | undefined>): number[] {
@@ -817,14 +767,6 @@ function normalizeString(value: string | undefined): string | undefined {
     return undefined;
   }
   return trimmed.toLowerCase();
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function toOptionalInt(value: number | string | undefined): number | undefined {

@@ -30,7 +30,7 @@ export const handleDailySummary: IntegrationHandler<
   input: DailySummaryInput,
   ctx: IntegrationContext<SlackIntegrationConfig>
 ): Promise<DailySummaryResult> => {
-  const { spaceId } = input;
+  const spaceId = input.spaceId || ctx.spaceId;
   const { config, logger, data } = ctx;
 
   // Check if daily summary is enabled
@@ -66,16 +66,17 @@ export const handleDailySummary: IntegrationHandler<
     const result = await data.listDocuments({
       startDate: yesterday.getTime(),
       endDate: today.getTime(),
-      size: 1000,
+      limit: 1000,
     });
     documents = result.items;
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     logger.error('Failed to fetch documents for summary', {
-      error: (error as Error).message,
+      error: message,
     });
     return {
       success: false,
-      error: `Failed to fetch documents: ${(error as Error).message}`,
+      error: `Failed to fetch documents: ${message}`,
     };
   }
 
@@ -127,13 +128,14 @@ export const handleDailySummary: IntegrationHandler<
       stats,
     };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     logger.error('Failed to send daily summary notification', {
-      error: (error as Error).message,
+      error: message,
     });
 
     return {
       success: false,
-      error: `Failed to send Slack notification: ${(error as Error).message}`,
+      error: `Failed to send Slack notification: ${message}`,
     };
   }
 };

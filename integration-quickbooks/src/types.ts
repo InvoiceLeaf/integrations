@@ -38,6 +38,8 @@ export interface SyncInvoicesResult extends HandlerResult {
   checkpointUpdated: boolean;
   processed: number;
   synced: number;
+  created: number;
+  updated: number;
   skipped: number;
   failed: number;
   realmId: string;

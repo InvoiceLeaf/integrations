@@ -9,6 +9,7 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "mail",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-gmail/icon.svg",
   "category": "communication",
   "tags": ["gmail", "google", "email", "inbox", "attachments"],
   "dataAccess": ["documents"],

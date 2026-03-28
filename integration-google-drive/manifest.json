@@ -9,9 +9,17 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "folder",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-google-drive/icon.svg",
   "category": "file-storage",
-  "tags": ["google-drive", "drive", "files", "pdf"],
-  "dataAccess": ["documents"],
+  "tags": [
+    "google-drive",
+    "drive",
+    "files",
+    "pdf"
+  ],
+  "dataAccess": [
+    "documents"
+  ],
   "externalAuth": [
     {
       "provider": "google-drive",
@@ -90,7 +98,9 @@
       "icon": "upload",
       "inputSchema": {
         "type": "object",
-        "required": ["documentId"],
+        "required": [
+          "documentId"
+        ],
         "properties": {
           "documentId": {
             "type": "string"
@@ -155,12 +165,21 @@
       {
         "title": "Import",
         "description": "Configure Drive PDF crawling",
-        "fields": ["rootFolderId", "recursive", "maxFilesPerRun", "stateKeyPrefix", "dedupeTtlSeconds", "importSource"]
+        "fields": [
+          "rootFolderId",
+          "recursive",
+          "maxFilesPerRun",
+          "stateKeyPrefix",
+          "dedupeTtlSeconds",
+          "importSource"
+        ]
       },
       {
         "title": "Upload",
         "description": "Configure default upload destination",
-        "fields": ["uploadTargetFolderId"]
+        "fields": [
+          "uploadTargetFolderId"
+        ]
       }
     ]
   }

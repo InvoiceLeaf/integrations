@@ -1,4 +1,5 @@
-import type { Document, IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { Document, IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, trimToUndefined } from '@invoiceleaf/integration-sdk';
 import { DatevApiError } from '../datev/client.js';
 import type {
   DatevImportType,
@@ -7,7 +8,7 @@ import type {
   SyncFailure,
   SyncInvoicesResult,
 } from '../types.js';
-import { buildRuntime, requireClientId, toErrorMessage, trimToUndefined } from './actions.js';
+import { buildRuntime, requireClientId, toErrorMessage } from './actions.js';
 
 export const SYSTEM = 'datev';
 export const ENTITY_DXSO_JOB = 'dxso-job';
@@ -27,7 +28,7 @@ interface SyncSingleDocumentResult {
   jobStatus?: number;
 }
 
-export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, DatevIntegrationConfig> = async (
+export const syncInvoices: IntegrationHandler<ScheduleInput, SyncInvoicesResult, DatevIntegrationConfig> = async (
   _input,
   context: IntegrationContext<DatevIntegrationConfig>
 ): Promise<SyncInvoicesResult> => {
@@ -89,7 +90,7 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Datev
       const pageResult = await context.data.listDocuments({
         startDate: Date.parse(fromDate),
         page,
-        size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
+        limit: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
 
       if (pageResult.items.length === 0) {
@@ -127,20 +128,20 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Datev
             });
           }
 
-          try {
-            await context.data.patchDocumentIntegrationMeta({
+          await context.data
+            .patchDocumentIntegrationMeta({
               documentId: document.id,
               system: SYSTEM,
               status: 'failed',
               lastSyncedAt: new Date().toISOString(),
               errorSummary: message.slice(0, 500),
+            })
+            .catch((metaError) => {
+              context.logger.warn('Failed to patch integration metadata after sync error', {
+                documentId: document.id,
+                error: toErrorMessage(metaError),
+              });
             });
-          } catch (metaError) {
-            context.logger.warn('Failed to patch document metadata after DATEV sync error', {
-              documentId: document.id,
-              error: toErrorMessage(metaError),
-            });
-          }
         }
       }
 
@@ -274,9 +275,13 @@ export async function syncSingleDocument(
 export function isSyncableDocument(
   document: Document,
   includeDraftDocuments: boolean,
-  requireProcessedDocuments: boolean
+  requireProcessedDocuments: boolean = true
 ): boolean {
   if (!document.id || document.deleted || trimToUndefined(document.duplicateOfId)) {
+    return false;
+  }
+
+  if (document.documentStatus === 'CANCELLED') {
     return false;
   }
 
@@ -285,6 +290,12 @@ export function isSyncableDocument(
   }
 
   if (requireProcessedDocuments && document.processed === false) {
+    return false;
+  }
+
+  // Skip zero-amount documents — they indicate missing or invalid data
+  const amount = document.totalAmount ?? document.netAmount ?? document.amountDue;
+  if (amount === 0) {
     return false;
   }
 
@@ -329,20 +340,6 @@ function formatSyncError(error: unknown): string {
   }
 
   return toErrorMessage(error);
-}
-
-function toBoundedInt(value: number | undefined, fallback: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
 }
 
 function truncate(value: string, maxLength: number): string {

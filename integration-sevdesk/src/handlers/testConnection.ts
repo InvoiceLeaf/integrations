@@ -1,10 +1,10 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage, type IntegrationContext, type IntegrationHandler, type UserActionInput } from '@invoiceleaf/integration-sdk';
 import type { SevdeskIntegrationConfig, TestConnectionResult } from '../types.js';
 import { SevdeskApiError, SevdeskClient } from '../sevdesk/client.js';
 import { resolveSevdeskApiKey } from './auth.js';
 
 export const testConnection: IntegrationHandler<
-  unknown,
+  UserActionInput,
   TestConnectionResult,
   SevdeskIntegrationConfig
 > = async (
@@ -54,11 +54,4 @@ export const testConnection: IntegrationHandler<
 
 function truncate(value: string): string {
   return value.length > 280 ? `${value.slice(0, 277)}...` : value;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return String(error);
 }

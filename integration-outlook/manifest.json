@@ -9,6 +9,7 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "mail",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-outlook/icon.svg",
   "category": "communication",
   "tags": ["outlook", "microsoft-365", "email", "attachments"],
   "dataAccess": ["documents"],

@@ -1,4 +1,5 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, trimToUndefined } from '@invoiceleaf/integration-sdk';
 import type {
   InboundSyncResult,
   SevdeskInboundSyncState,
@@ -17,7 +18,7 @@ const DEFAULT_INBOUND_MAX_INVOICES_PER_RUN = 100;
 const MAX_REPORTED_FAILURES = 25;
 
 export const pullInvoicesFromSevdesk: IntegrationHandler<
-  unknown,
+  ScheduleInput,
   InboundSyncResult,
   SevdeskIntegrationConfig
 > = async (
@@ -64,7 +65,7 @@ export const pullInvoicesFromSevdesk: IntegrationHandler<
     200
   );
   const maxInvoicesPerRun = toBoundedInt(
-    context.config.inboundMaxInvoicesPerRun,
+    context.config.inboundMaxDocumentsPerRun,
     DEFAULT_INBOUND_MAX_INVOICES_PER_RUN,
     1,
     1000
@@ -330,33 +331,6 @@ function normalizeInvoiceStatus(status: string | number | undefined): string | u
     return String(Math.trunc(status));
   }
   return undefined;
-}
-
-function toBoundedInt(
-  value: number | undefined,
-  fallback: number,
-  min: number,
-  max: number
-): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function toErrorMessage(error: unknown): string {

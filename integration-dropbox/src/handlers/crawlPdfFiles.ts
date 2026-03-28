@@ -1,4 +1,5 @@
 import type { IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type { CrawlResult, DropboxIntegrationConfig, DropboxPdfFile } from '../types.js';
 import { buildFileStateKey } from '../utils/dedupe.js';
 import { DropboxApiError, DropboxClient } from '../dropbox/client.js';
@@ -239,23 +240,3 @@ function normalizePath(path: string): string {
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
-function toBoundedInt(value: number | undefined, fallback: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}

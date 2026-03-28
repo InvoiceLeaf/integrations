@@ -1,9 +1,12 @@
+import {
+  requestWithRetry,
+  requestResponseWithRetry,
+  trimToUndefined,
+} from '@invoiceleaf/integration-sdk';
+import type { RequestWithRetryOptions } from '@invoiceleaf/integration-sdk';
+
 const GOOGLE_DRIVE_BASE = 'https://www.googleapis.com/drive/v3';
 const GOOGLE_DRIVE_UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
-const MAX_REQUEST_ATTEMPTS = 3;
-const REQUEST_TIMEOUT_MS = 30_000;
 
 interface DriveFileResponse {
   id?: string;
@@ -53,6 +56,13 @@ export class GoogleDriveApiError extends Error {
     this.status = status;
     this.responseBody = responseBody;
   }
+}
+
+function retryOptions(method: string): RequestWithRetryOptions {
+  return {
+    method,
+    createError: (message, status, responseBody) => new GoogleDriveApiError(message, status, responseBody),
+  };
 }
 
 export class GoogleDriveClient {
@@ -173,9 +183,16 @@ export class GoogleDriveClient {
   }
 
   async downloadFile(fileId: string): Promise<{ contentBase64: string }> {
-    const response = await this.requestRaw('GET', `/files/${encodeURIComponent(fileId)}`, undefined, {
-      alt: 'media',
-    });
+    const url = new URL(`/files/${encodeURIComponent(fileId)}`, `${GOOGLE_DRIVE_BASE}/`);
+    url.searchParams.set('alt', 'media');
+
+    const response = await requestResponseWithRetry(url.toString(), {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        'User-Agent': 'InvoiceLeaf integration-google-drive/1.0',
+      },
+    }, retryOptions('GET'));
 
     const bytes = Buffer.from(await response.arrayBuffer());
     return {
@@ -253,20 +270,6 @@ export class GoogleDriveClient {
     body?: never,
     query?: Record<string, string>
   ): Promise<T> {
-    const response = await this.requestRaw(method, path, body, query);
-    const text = await response.text();
-    if (text.length === 0) {
-      return {} as T;
-    }
-    return JSON.parse(text) as T;
-  }
-
-  private async requestRaw(
-    method: 'GET',
-    path: string,
-    body?: never,
-    query?: Record<string, string>
-  ): Promise<Response> {
     const url = new URL(path, `${GOOGLE_DRIVE_BASE}/`);
     if (query) {
       for (const [key, value] of Object.entries(query)) {
@@ -274,7 +277,7 @@ export class GoogleDriveClient {
       }
     }
 
-    return requestWithRetry(url.toString(), {
+    return requestWithRetry<T>(url.toString(), {
       method,
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
@@ -282,7 +285,7 @@ export class GoogleDriveClient {
         'User-Agent': 'InvoiceLeaf integration-google-drive/1.0',
       },
       body,
-    }, method);
+    }, retryOptions(method));
   }
 
   private async uploadRequest<T>(
@@ -299,7 +302,7 @@ export class GoogleDriveClient {
       }
     }
 
-    const response = await requestWithRetry(url.toString(), {
+    return requestWithRetry<T>(url.toString(), {
       method,
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
@@ -308,85 +311,10 @@ export class GoogleDriveClient {
         ...headers,
       },
       body,
-    }, method);
-
-    const text = await response.text();
-    if (text.length === 0) {
-      return {} as T;
-    }
-    return JSON.parse(text) as T;
+    }, retryOptions(method));
   }
-}
-
-async function requestWithRetry(url: string, init: RequestInit, method: string): Promise<Response> {
-  let lastError: Error | null = null;
-  const isIdempotent = method === 'GET';
-
-  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    try {
-      const response = await fetch(url, { ...init, signal: controller.signal });
-      if (!response.ok) {
-        const body = await response.text();
-        const error = new GoogleDriveApiError(
-          `Google Drive API request failed with status ${response.status}`,
-          response.status,
-          body
-        );
-
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(response.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
-
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-
-        throw error;
-      }
-
-      return response;
-    } catch (error) {
-      lastError = error as Error;
-      if (error instanceof GoogleDriveApiError) {
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(error.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
-        await sleep(backoffMs(attempt));
-        continue;
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  throw lastError ?? new Error('Google Drive request failed after retries.');
 }
 
 function escapeQueryValue(value: string): string {
   return value.replace(/'/g, "\\'");
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function backoffMs(attempt: number): number {
-  return Math.min(2000, 250 * 2 ** (attempt - 1));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

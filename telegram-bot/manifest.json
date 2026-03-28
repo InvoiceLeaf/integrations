@@ -9,6 +9,7 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "telegram",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/telegram-bot/icon.svg",
   "category": "communication",
   "tags": ["telegram", "notifications", "bot", "messaging"],
   "dataAccess": ["documents", "companies", "categories", "spaces", "exports"],

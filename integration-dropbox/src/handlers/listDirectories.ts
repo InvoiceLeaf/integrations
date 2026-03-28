@@ -1,4 +1,5 @@
 import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type {
   DropboxIntegrationConfig,
   ListDirectoriesInput,
@@ -58,25 +59,4 @@ function normalizePath(path: string): string {
     return '';
   }
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-}
-
-function toBoundedInt(value: number | undefined, fallback: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
 }

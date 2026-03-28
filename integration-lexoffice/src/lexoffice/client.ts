@@ -1,8 +1,7 @@
+import { requestWithRetry, trimToUndefined } from '@invoiceleaf/integration-sdk';
+import type { RequestWithRetryOptions } from '@invoiceleaf/integration-sdk';
+
 const DEFAULT_LEXOFFICE_BASE_URL = 'https://api.lexoffice.io/v1';
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
-const MAX_REQUEST_ATTEMPTS = 3;
-const REQUEST_TIMEOUT_MS = 30_000;
 
 export class LexofficeApiError extends Error {
   public readonly status: number;
@@ -107,84 +106,16 @@ export class LexofficeClient {
       }
     }
 
-    return requestWithRetry<T>(url.toString(), init, method);
+    const retryOptions: RequestWithRetryOptions = {
+      method,
+      createError: (message, status, responseBody) =>
+        new LexofficeApiError(message, status, responseBody),
+    };
+
+    return requestWithRetry<T>(url.toString(), init, retryOptions);
   }
-}
-
-async function requestWithRetry<T>(url: string, init: RequestInit, method: string): Promise<T> {
-  let lastError: Error | null = null;
-  const isIdempotent = method === 'GET';
-
-  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    try {
-      const response = await fetch(url, { ...init, signal: controller.signal });
-      const body = await response.text();
-
-      if (!response.ok) {
-        const error = new LexofficeApiError(
-          `lexoffice API request failed with status ${response.status}`,
-          response.status,
-          body
-        );
-
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(response.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
-
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-
-        throw error;
-      }
-
-      if (body.length === 0) {
-        return {} as T;
-      }
-
-      return JSON.parse(body) as T;
-    } catch (error) {
-      lastError = error as Error;
-      if (error instanceof LexofficeApiError) {
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(error.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
-        await sleep(backoffMs(attempt));
-        continue;
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  throw lastError ?? new Error('lexoffice request failed after retries.');
 }
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function backoffMs(attempt: number): number {
-  return Math.min(2000, 250 * 2 ** (attempt - 1));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

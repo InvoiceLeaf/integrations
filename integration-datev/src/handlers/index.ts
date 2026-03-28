@@ -1,5 +1,5 @@
+export { testConnection } from './testConnection.js';
 export {
-  testConnection,
   discoverAuthEndpoints,
   listEndpointOptions,
   callDatevEndpoint,

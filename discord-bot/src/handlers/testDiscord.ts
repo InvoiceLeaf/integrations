@@ -1,9 +1,7 @@
-import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
+import type { IntegrationHandler, HandlerResult, UserActionInput } from '@invoiceleaf/integration-sdk';
+import type { DiscordBotConfig } from '../types.js';
 
-export const sendTestDiscordMessage = async (
-  input: unknown,
-  context: IntegrationContext
-) => {
+export const sendTestDiscordMessage: IntegrationHandler<UserActionInput, HandlerResult, DiscordBotConfig> = async (input, context) => {
   try {
     context.logger.info('Building Discord test message payload', { input });
     return {
@@ -16,8 +14,8 @@ export const sendTestDiscordMessage = async (
     };
   } catch (error) {
     context.logger.error('Failed to build test message payload', {
-      error: (error as Error).message,
+      error: error instanceof Error ? error.message : String(error),
     });
-    return { success: false, error: `Handler error: ${(error as Error).message}` };
+    return { success: false, error: `Handler error: ${error instanceof Error ? error.message : String(error)}` };
   }
 };

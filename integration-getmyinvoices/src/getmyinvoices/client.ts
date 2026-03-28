@@ -1,8 +1,10 @@
+import {
+  trimToUndefined,
+  requestWithRetry,
+  requestResponseWithRetry,
+} from '@invoiceleaf/integration-sdk';
+
 const DEFAULT_GETMYINVOICES_BASE_URL = 'https://api.getmyinvoices.com/accounts/v3';
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
-const MAX_REQUEST_ATTEMPTS = 3;
-const REQUEST_TIMEOUT_MS = 30_000;
 
 export interface GetMyInvoicesAccount {
   accountId?: string;
@@ -373,6 +375,11 @@ export class GetMyInvoicesClient {
             contentBase64: fileContent,
           };
         }
+        // JSON response parsed successfully but contained no fileContent/content field —
+        // falling back to raw bytes. This may indicate an API change or unexpected payload.
+        console.warn(
+          `[GetMyInvoicesClient] downloadDocumentFile(${documentUid}): JSON response missing fileContent — falling back to raw bytes`
+        );
       }
     }
 
@@ -402,7 +409,11 @@ export class GetMyInvoicesClient {
       init.body = JSON.stringify(body);
     }
 
-    return requestJsonWithRetry<T>(url, init, method);
+    return requestWithRetry<T>(url, init, {
+      method,
+      createError: (message, status, responseBody) =>
+        new GetMyInvoicesApiError(message, status, responseBody),
+    });
   }
 
   private async requestRaw(
@@ -417,7 +428,11 @@ export class GetMyInvoicesClient {
       headers,
     };
 
-    return requestResponseWithRetry(url, init, method);
+    return requestResponseWithRetry(url, init, {
+      method,
+      createError: (message, status, responseBody) =>
+        new GetMyInvoicesApiError(message, status, responseBody),
+    });
   }
 
   private buildHeaders(includeJson: boolean): Record<string, string> {
@@ -483,14 +498,6 @@ function toOptionalInt(value: unknown): number | undefined {
   return undefined;
 }
 
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
 function trimTrailingSlash(value: string): string {
   return value.endsWith('/') ? value.slice(0, -1) : value;
 }
@@ -545,125 +552,6 @@ function buildRequestUrl(
   return url;
 }
 
-async function requestJsonWithRetry<T>(url: string, init: RequestInit, method: string): Promise<T> {
-  let lastError: Error | null = null;
-  const isIdempotent = method === 'GET';
-
-  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    try {
-      const response = await fetch(url, { ...init, signal: controller.signal });
-      const body = await response.text();
-
-      if (!response.ok) {
-        const error = new GetMyInvoicesApiError(
-          `GetMyInvoices API request failed with status ${response.status}`,
-          response.status,
-          body
-        );
-
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(response.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
-
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-
-        throw error;
-      }
-
-      if (body.length === 0) {
-        return {} as T;
-      }
-
-      return JSON.parse(body) as T;
-    } catch (error) {
-      lastError = error as Error;
-      if (error instanceof GetMyInvoicesApiError) {
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(error.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
-        await sleep(backoffMs(attempt));
-        continue;
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  throw lastError ?? new Error('GetMyInvoices request failed after retries.');
-}
-
-async function requestResponseWithRetry(url: string, init: RequestInit, method: string): Promise<Response> {
-  let lastError: Error | null = null;
-  const isIdempotent = method === 'GET';
-
-  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    try {
-      const response = await fetch(url, { ...init, signal: controller.signal });
-
-      if (!response.ok) {
-        const body = await response.text();
-        const error = new GetMyInvoicesApiError(
-          `GetMyInvoices API request failed with status ${response.status}`,
-          response.status,
-          body
-        );
-
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(response.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
-
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-
-        throw error;
-      }
-
-      return response;
-    } catch (error) {
-      lastError = error as Error;
-      if (error instanceof GetMyInvoicesApiError) {
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(error.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
-        await sleep(backoffMs(attempt));
-        continue;
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  throw lastError ?? new Error('GetMyInvoices request failed after retries.');
-}
-
-function backoffMs(attempt: number): number {
-  return Math.min(2000, 250 * 2 ** (attempt - 1));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function parseFilenameFromContentDisposition(value: string | undefined): string | undefined {
   const header = trimToUndefined(value);

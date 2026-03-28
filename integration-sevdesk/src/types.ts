@@ -1,5 +1,4 @@
 export interface SevdeskIntegrationConfig {
-  apiKey?: string;
   baseUrl?: string;
   contactCategoryId?: number;
   contactPersonId?: number;
@@ -23,7 +22,7 @@ export interface SevdeskIntegrationConfig {
   enableEventSync?: boolean;
   enableInboundSync?: boolean;
   inboundInitialSyncLookbackHours?: number;
-  inboundMaxInvoicesPerRun?: number;
+  inboundMaxDocumentsPerRun?: number;
   inboundPageSize?: number;
 }
 

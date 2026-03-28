@@ -49,32 +49,73 @@ export const syncInvoiceEvent: IntegrationHandler<
       };
     }
 
-    const synced = await syncSingleDocument(context, document);
+    let synced: Awaited<ReturnType<typeof syncSingleDocument>>;
+    try {
+      synced = await syncSingleDocument(context, document);
+    } catch (error) {
+      const message = toErrorMessage(error);
+      context.logger.error('DATEV event sync failed', {
+        documentId,
+        error: message,
+      });
+
+      await context.data
+        .patchDocumentIntegrationMeta({
+          documentId,
+          system: 'datev',
+          status: 'failed',
+          lastSyncedAt: new Date().toISOString(),
+          errorSummary: message.slice(0, 500),
+        })
+        .catch((metaError) => {
+          context.logger.warn('Failed to patch DATEV metadata after event sync error', {
+            documentId,
+            error: toErrorMessage(metaError),
+          });
+        });
+
+      return {
+        success: false,
+        error: message,
+      };
+    }
+
+    // Ensure metadata is patched on the success path even if syncSingleDocument's
+    // own patchDocumentIntegrationMeta call was skipped or failed internally.
+    await context.data
+      .patchDocumentIntegrationMeta({
+        documentId,
+        system: 'datev',
+        externalId: synced.jobId,
+        status: 'synced',
+        lastSyncedAt: new Date().toISOString(),
+        metadata: {
+          clientId: synced.clientId,
+          jobId: synced.jobId,
+          importType: synced.importType,
+          accountingMonth: synced.accountingMonth,
+          fileName: synced.fileName,
+          datevJobStatus: synced.jobStatus,
+        },
+      })
+      .catch((metaError) => {
+        context.logger.warn('Failed to patch DATEV metadata after successful sync', {
+          documentId,
+          jobId: synced.jobId,
+          error: toErrorMessage(metaError),
+        });
+      });
+
     return {
       success: true,
       message: `Synced document ${documentId} to DATEV job ${synced.jobId}.`,
     };
   } catch (error) {
     const message = toErrorMessage(error);
-    context.logger.error('DATEV event sync failed', {
+    context.logger.error('DATEV event sync failed unexpectedly', {
       documentId,
       error: message,
     });
-
-    await context.data
-      .patchDocumentIntegrationMeta({
-        documentId,
-        system: 'datev',
-        status: 'failed',
-        lastSyncedAt: new Date().toISOString(),
-        errorSummary: message.slice(0, 500),
-      })
-      .catch((metaError) => {
-        context.logger.warn('Failed to patch DATEV metadata after event sync error', {
-          documentId,
-          error: toErrorMessage(metaError),
-        });
-      });
 
     return {
       success: false,

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage, type IntegrationContext, type IntegrationHandler, type ScheduleInput } from '@invoiceleaf/integration-sdk';
 import type { CrawlResult, OutlookAttachment, OutlookConfig } from '../types.js';
 import { buildAttachmentStateKey } from '../utils/dedupe.js';
 import { OutlookApiError, OutlookClient } from '../outlook/client.js';
@@ -149,7 +149,40 @@ export const crawlPdfAttachments: IntegrationHandler<ScheduleInput, CrawlResult,
 
       for (const attachment of attachments) {
         const contentBase64 = attachment.contentBytes;
-        const fileBytes = Buffer.from(contentBase64, 'base64');
+        if (typeof contentBase64 !== 'string' || contentBase64.length === 0) {
+          context.logger.warn('Skipping attachment with missing or empty contentBytes', {
+            messageId: message.id,
+            attachmentId: attachment.id,
+            name: attachment.name,
+          });
+          result.skipped += 1;
+          continue;
+        }
+
+        let fileBytes: Buffer;
+        try {
+          fileBytes = Buffer.from(contentBase64, 'base64');
+        } catch (decodeError) {
+          context.logger.warn('Skipping attachment with invalid base64 contentBytes', {
+            messageId: message.id,
+            attachmentId: attachment.id,
+            name: attachment.name,
+            error: toErrorMessage(decodeError),
+          });
+          result.skipped += 1;
+          continue;
+        }
+
+        if (fileBytes.length === 0) {
+          context.logger.warn('Skipping attachment with zero-length decoded content', {
+            messageId: message.id,
+            attachmentId: attachment.id,
+            name: attachment.name,
+          });
+          result.skipped += 1;
+          continue;
+        }
+
         const checksum = createHash('sha256').update(fileBytes).digest('hex');
 
         const importItem: OutlookAttachment = {
@@ -174,11 +207,11 @@ export const crawlPdfAttachments: IntegrationHandler<ScheduleInput, CrawlResult,
         } else {
           result.failed += 1;
         }
-
-        await context.state.set(`${statePrefix}:lastProcessedMessageId`, message.id, {
-          ttlSeconds: dedupeTtlSeconds,
-        });
       }
+
+      await context.state.set(`${statePrefix}:lastProcessedMessageId`, message.id, {
+        ttlSeconds: dedupeTtlSeconds,
+      });
     }
   } catch (error) {
     result.success = false;
@@ -197,10 +230,3 @@ export const crawlPdfAttachments: IntegrationHandler<ScheduleInput, CrawlResult,
   result.message = `Scanned ${result.scannedMessages} messages, imported ${result.imported} PDFs`;
   return result;
 };
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}

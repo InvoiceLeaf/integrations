@@ -1,5 +1,5 @@
-import type { Document, IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
-import { firstFinite } from '@invoiceleaf/integration-sdk';
+import type { Document, IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, toDateOnly, toDateOnlyFromTimestamp, toFiniteNumber, firstFinite, trimToUndefined } from '@invoiceleaf/integration-sdk';
 import type {
   SyncFailure,
   SyncInvoicesResult,
@@ -17,7 +17,7 @@ const DEFAULT_PAGE_SIZE = 50;
 const DEFAULT_MAX_DOCUMENTS_PER_RUN = 100;
 const MAX_REPORTED_FAILURES = 25;
 
-export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, ZohoIntegrationConfig> = async (
+export const syncInvoices: IntegrationHandler<ScheduleInput, SyncInvoicesResult, ZohoIntegrationConfig> = async (
   _input,
   context: IntegrationContext<ZohoIntegrationConfig>
 ): Promise<SyncInvoicesResult> => {
@@ -106,7 +106,7 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, ZohoI
       const pageResult = await context.data.listDocuments({
         startDate: Number.isFinite(parsedStartDate) ? parsedStartDate : Date.parse(fallbackFromDate),
         page,
-        size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
+        limit: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
 
       if (pageResult.items.length === 0) {
@@ -351,7 +351,7 @@ function buildLineItems(
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
     const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
-    const amount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0))!;
+    const amount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ?? 0;
     const rate = toFiniteNumber(item.unitAmount, amount / safeQuantity);
 
     lineItems.push({
@@ -393,8 +393,8 @@ function defaultLineDescription(document: Document): string {
   return trimToUndefined(document.description) || `Invoice ${document.invoiceId ?? document.id}`;
 }
 
-function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean): boolean {
-  if (document.deleted) {
+function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean = true): boolean {
+  if (!document.id || document.deleted || trimToUndefined(document.duplicateOfId)) {
     return false;
   }
 
@@ -402,7 +402,7 @@ function isSyncableDocument(document: Document, includeDraftDocuments: boolean, 
     return false;
   }
 
-  if (document.documentStatus === 'DRAFT' && !includeDraftDocuments) {
+  if (!includeDraftDocuments && document.documentStatus === 'DRAFT') {
     return false;
   }
 
@@ -411,62 +411,6 @@ function isSyncableDocument(document: Document, includeDraftDocuments: boolean, 
   }
 
   return true;
-}
-
-function toBoundedInt(
-  value: number | undefined,
-  fallback: number,
-  min: number,
-  max: number
-): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
-}
-
-function toDateOnly(isoDate: string | undefined): string | undefined {
-  if (!isoDate) {
-    return undefined;
-  }
-  const date = new Date(isoDate);
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-  return date.toISOString().slice(0, 10);
-}
-
-function toDateOnlyFromTimestamp(value: number | undefined): string | undefined {
-  if (!Number.isFinite(value)) {
-    return undefined;
-  }
-  const date = new Date(value as number);
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-  return date.toISOString().slice(0, 10);
-}
-
-function toFiniteNumber(value: number | undefined, fallback: number): number {
-  if (Number.isFinite(value)) {
-    return value as number;
-  }
-  return fallback;
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function toErrorMessage(error: unknown): string {

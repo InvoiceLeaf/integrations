@@ -9,6 +9,7 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "messenger",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/messenger-bot/icon.svg",
   "category": "communication",
   "tags": ["messenger", "facebook", "notifications", "bot", "messaging"],
   "dataAccess": ["documents", "companies", "categories", "spaces", "exports"],

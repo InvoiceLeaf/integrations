@@ -1,4 +1,5 @@
 import type { IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, trimToUndefined, toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type {
   CrawlResult,
   DrivePdfFile,
@@ -227,33 +228,4 @@ async function clearStateOrFallback(
       errors.push(`${fileRef}: state key "${stateKey}" locked — manual cleanup required`);
     }
   }
-}
-
-function toBoundedInt(value: number | undefined, fallback: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
 }

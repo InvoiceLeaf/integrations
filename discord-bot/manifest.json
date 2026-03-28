@@ -9,6 +9,7 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "discord",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/discord-bot/icon.svg",
   "category": "communication",
   "tags": ["discord", "notifications", "bot", "messaging"],
   "dataAccess": ["documents", "companies", "categories", "spaces", "exports"],

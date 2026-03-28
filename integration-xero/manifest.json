@@ -9,9 +9,17 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "book",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-xero/icon.svg",
   "category": "accounting",
-  "tags": ["xero", "accounting", "invoice-sync"],
-  "dataAccess": ["documents", "companies"],
+  "tags": [
+    "xero",
+    "accounting",
+    "invoice-sync"
+  ],
+  "dataAccess": [
+    "documents",
+    "companies"
+  ],
   "externalAuth": [
     {
       "provider": "xero",
@@ -59,7 +67,10 @@
       "targetStatus": {
         "type": "string",
         "title": "Invoice Status in Xero",
-        "enum": ["DRAFT", "AUTHORISED"],
+        "enum": [
+          "DRAFT",
+          "AUTHORISED"
+        ],
         "default": "DRAFT"
       },
       "initialSyncLookbackHours": {
@@ -121,19 +132,32 @@
       {
         "title": "Xero Connection",
         "description": "Tenant and authorization behavior",
-        "fields": ["xeroTenantId", "targetStatus"]
+        "fields": [
+          "xeroTenantId",
+          "targetStatus"
+        ]
       },
       {
         "title": "Sync Limits",
         "description": "Checkpoint window and per-run throughput",
-        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments", "requireProcessedDocuments"]
+        "fields": [
+          "initialSyncLookbackHours",
+          "maxDocumentsPerRun",
+          "pageSize",
+          "includeDraftDocuments",
+          "requireProcessedDocuments"
+        ]
       },
       {
         "title": "Mapping Defaults",
         "description": "Invoice number and account mapping behavior",
-        "fields": ["invoiceNumberPrefix", "defaultRevenueAccountCode", "defaultExpenseAccountCode", "fallbackContactName"]
+        "fields": [
+          "invoiceNumberPrefix",
+          "defaultRevenueAccountCode",
+          "defaultExpenseAccountCode",
+          "fallbackContactName"
+        ]
       }
     ]
   }
 }
-

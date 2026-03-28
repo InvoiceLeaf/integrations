@@ -9,7 +9,8 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "slack",
-  "category": "notifications",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/slack-notifications/icon.svg",
+  "category": "communication",
   "tags": ["slack", "notifications", "alerts", "messaging", "real-time"],
   "dataAccess": ["documents", "companies", "categories"],
   "externalAuth": [],

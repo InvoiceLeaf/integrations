@@ -9,10 +9,17 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "book",
-  "iconUrl": "https://www.getmyinvoices.com/wp-content/uploads/2023/12/gmi-logo.svg",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-getmyinvoices/icon.svg",
   "category": "accounting",
-  "tags": ["getmyinvoices", "accounting", "document-sync"],
-  "dataAccess": ["documents", "companies"],
+  "tags": [
+    "getmyinvoices",
+    "accounting",
+    "document-sync"
+  ],
+  "dataAccess": [
+    "documents",
+    "companies"
+  ],
   "externalAuth": [
     {
       "provider": "getmyinvoices",
@@ -39,7 +46,9 @@
       "type": "event",
       "name": "On Document Created",
       "description": "Sync newly created InvoiceLeaf documents to GetMyInvoices",
-      "events": ["document.created"],
+      "events": [
+        "document.created"
+      ],
       "handler": "syncInvoiceEvent",
       "configurable": true
     },
@@ -48,7 +57,9 @@
       "type": "event",
       "name": "On Document Updated",
       "description": "Sync updated InvoiceLeaf documents to GetMyInvoices",
-      "events": ["document.updated"],
+      "events": [
+        "document.updated"
+      ],
       "handler": "syncInvoiceEvent",
       "configurable": true
     },
@@ -57,7 +68,9 @@
       "type": "event",
       "name": "On Document Deleted",
       "description": "Delete mapped GetMyInvoices documents when InvoiceLeaf documents are deleted",
-      "events": ["document.deleted"],
+      "events": [
+        "document.deleted"
+      ],
       "handler": "deleteInvoiceEvent",
       "configurable": true
     },
@@ -87,12 +100,6 @@
         "type": "string",
         "title": "GetMyInvoices API Base URL",
         "description": "Default is https://api.getmyinvoices.com/accounts/v3"
-      },
-      "apiKey": {
-        "type": "string",
-        "title": "GetMyInvoices API Key",
-        "format": "password",
-        "description": "Optional fallback when external API-key connection is not available in UI."
       },
       "applicationHeader": {
         "type": "string",
@@ -194,7 +201,12 @@
       "defaultPaymentStatus": {
         "type": "string",
         "title": "Default Payment Status",
-        "enum": ["Unknown", "Paid", "Partially", "Not paid"],
+        "enum": [
+          "Unknown",
+          "Paid",
+          "Partially",
+          "Not paid"
+        ],
         "default": "Unknown"
       },
       "defaultCurrency": {
@@ -303,7 +315,11 @@
       {
         "title": "GetMyInvoices Connection",
         "description": "API endpoint and credential fallbacks",
-        "fields": ["baseUrl", "apiKey", "applicationHeader", "userAgent"]
+        "fields": [
+          "baseUrl",
+          "applicationHeader",
+          "userAgent"
+        ]
       },
       {
         "title": "Outbound Defaults",

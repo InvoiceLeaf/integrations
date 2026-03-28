@@ -1,8 +1,9 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, UserActionInput } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type { GmailConfig, HandlerResult } from '../types.js';
 import { GmailApiError, GmailClient } from '../gmail/client.js';
 
-export const testConnection: IntegrationHandler<unknown, HandlerResult, GmailConfig> = async (
+export const testConnection: IntegrationHandler<UserActionInput, HandlerResult, GmailConfig> = async (
   _input,
   context: IntegrationContext<GmailConfig>
 ): Promise<HandlerResult> => {
@@ -52,11 +53,4 @@ export const testConnection: IntegrationHandler<unknown, HandlerResult, GmailCon
 
 function truncate(value: string): string {
   return value.length > 280 ? `${value.slice(0, 277)}...` : value;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
 }

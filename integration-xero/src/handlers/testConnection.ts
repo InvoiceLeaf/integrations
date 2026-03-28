@@ -1,4 +1,4 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { type IntegrationContext, type IntegrationHandler, type UserActionInput, toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type { TestConnectionResult, XeroIntegrationConfig } from '../types.js';
 import {
   listXeroConnections,
@@ -8,7 +8,7 @@ import {
 } from '../xero/client.js';
 
 export const testConnection: IntegrationHandler<
-  unknown,
+  UserActionInput,
   TestConnectionResult,
   XeroIntegrationConfig
 > = async (
@@ -77,12 +77,5 @@ export const testConnection: IntegrationHandler<
 
 function truncate(value: string): string {
   return value.length > 280 ? `${value.slice(0, 277)}...` : value;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return String(error);
 }
 

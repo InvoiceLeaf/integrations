@@ -34,7 +34,6 @@ export type GetMyInvoicesPaymentMethod =
   | 'other';
 
 export interface GetMyInvoicesIntegrationConfig {
-  apiKey?: string;
   baseUrl?: string;
   applicationHeader?: string;
   userAgent?: string;

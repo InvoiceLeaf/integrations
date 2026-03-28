@@ -1,9 +1,7 @@
+import { requestWithRetry } from '@invoiceleaf/integration-sdk';
+
 const XERO_CONNECTIONS_URL = 'https://api.xero.com/connections';
 const XERO_ACCOUNTING_BASE_URL = 'https://api.xero.com/api.xro/2.0';
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
-const MAX_REQUEST_ATTEMPTS = 3;
-const REQUEST_TIMEOUT_MS = 30_000;
 
 export interface XeroConnection {
   id: string;
@@ -74,8 +72,11 @@ export async function listXeroConnections(accessToken: string): Promise<XeroConn
         Accept: 'application/json',
       },
     },
-    false,
-    'GET'
+    {
+      method: 'GET',
+      includeBodyInError: false,
+      createError: (msg, status, body) => new XeroApiError(msg, status, body),
+    }
   );
 }
 
@@ -202,91 +203,23 @@ export class XeroAccountingClient {
       init.body = JSON.stringify(body);
     }
 
-    return requestWithRetry<T>(url.toString(), init, true, method);
+    return requestWithRetry<T>(url.toString(), init, {
+      method,
+      includeBodyInError: true,
+      createError: (msg, status, body) => new XeroApiError(msg, status, body),
+    });
   }
 }
 
 export function escapeWhereValue(value: string): string {
-  // Escape backslashes first, then double quotes, to prevent injection via \"
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  // 1. Strip null bytes and control characters that could alter query semantics
+  // 2. Escape backslashes first (before they're introduced by other escapes)
+  // 3. Escape double quotes (used as the outer delimiter in our where clauses)
+  // 4. Escape single quotes (Xero also accepts single-quoted strings)
+  return value
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
+    .replace(/[\t\r\n]/g, ' ')
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/'/g, "\\'");
 }
-
-async function requestWithRetry<T>(
-  url: string,
-  init: RequestInit,
-  includeBodyInError: boolean,
-  method = 'GET'
-): Promise<T> {
-  let lastError: Error | null = null;
-  const isIdempotent = method === 'GET';
-
-  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    try {
-      const response = await fetch(url, { ...init, signal: controller.signal });
-      const body = await response.text();
-
-      if (!response.ok) {
-        const error = new XeroApiError(
-          `Xero API request failed with status ${response.status}`,
-          response.status,
-          includeBodyInError ? body : ''
-        );
-
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(response.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
-
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-
-        throw error;
-      }
-
-      if (body.length === 0) {
-        return {} as T;
-      }
-
-      try {
-        return JSON.parse(body) as T;
-      } catch (parseError) {
-        throw new XeroApiError(
-          `Failed to parse Xero API response: ${String(parseError)}`,
-          response.status,
-          body.slice(0, 500)
-        );
-      }
-    } catch (error) {
-      lastError = error as Error;
-      if (error instanceof XeroApiError) {
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(error.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
-        await sleep(backoffMs(attempt));
-        continue;
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  throw lastError ?? new Error('Xero request failed after retries.');
-}
-
-function backoffMs(attempt: number): number {
-  return Math.min(2000, 250 * 2 ** (attempt - 1));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-

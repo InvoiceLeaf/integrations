@@ -38,6 +38,7 @@ import {
   formatCurrency,
   formatDate,
   formatRelativeTime,
+  formatSlackDate,
 } from '../utils/formatters.js';
 
 // ============================================================================
@@ -167,8 +168,9 @@ export function buildDocumentCreatedBlocks(
     blocks.push(context(mrkdwn(`Assigned to: *${company.name}*`)));
   }
 
+  const createdTs = document.created || getCreatedAt(document);
   blocks.push(
-    context(mrkdwn(`Uploaded ${formatRelativeTime(getCreatedAt(document))}`)),
+    context(mrkdwn(`Uploaded ${formatSlackDate(createdTs, '{date_short_pretty} at {time}', formatRelativeTime(createdTs))}`)),
     actions(button('View Document', 'view_document', { url: invoiceUrl }))
   );
 
@@ -192,7 +194,7 @@ export function buildDocumentProcessedBlocks(
       mrkdwn(`*Vendor*\n${getVendorName(document) || 'Unknown'}`),
       mrkdwn(`*Amount*\n${formatCurrency(getTotal(document), currencyCode)}`),
       mrkdwn(`*Invoice #*\n${getInvoiceNumber(document) || 'N/A'}`),
-      mrkdwn(`*Date*\n${formatDate(getInvoiceDate(document))}`),
+      mrkdwn(`*Date*\n${formatSlackDate(getInvoiceDate(document), '{date_short}', formatDate(getInvoiceDate(document)))}`),
     ]),
   ];
 
@@ -266,8 +268,9 @@ export function buildDocumentUpdatedBlocks(
     blocks.push(context(mrkdwn(`Assigned to: *${company.name}*`)));
   }
 
+  const updatedTs = document.lastUpdate || getUpdatedAt(document);
   blocks.push(
-    context(mrkdwn(`Updated ${formatRelativeTime(getUpdatedAt(document))}`)),
+    context(mrkdwn(`Updated ${formatSlackDate(updatedTs, '{date_short_pretty} at {time}', formatRelativeTime(updatedTs))}`)),
     actions(button('View Invoice', 'view_invoice', { url: invoiceUrl }))
   );
 
@@ -285,13 +288,22 @@ export function buildExportCompletedBlocks(exportData: Export, spaceId: string):
   const dashboardUrl = `${APP_BASE_URL}/spaces/${spaceId}/exports`;
   const downloadUrl = exportData.downloadUrl;
 
+  // The backend Context API may return `created` (epoch ms) instead of `createdAt` (ISO string),
+  // so we handle both field names and both value types for robustness.
+  const rawExport = exportData as Record<string, unknown>;
+  const completedTs = exportData.completedAt || exportData.createdAt || rawExport.completed || rawExport.created;
+
   const blocks: SlackBlock[] = [
     header('Export Ready'),
     sectionWithFields([
       mrkdwn(`*Format*\n${exportData.format.toUpperCase()}`),
       mrkdwn(`*Documents*\n${exportData.documentCount}`),
     ]),
-    context(mrkdwn(`Completed ${formatRelativeTime(exportData.completedAt || exportData.createdAt)}`)),
+    context(mrkdwn(`Completed ${formatSlackDate(
+      completedTs as string | number | undefined,
+      '{date_short_pretty} at {time}',
+      formatRelativeTime(completedTs as string | number | undefined)
+    )}`)),
   ];
 
   const actionButtons: ButtonElement[] = [];
@@ -332,13 +344,17 @@ export function buildReminderTriggeredBlocks(input: ReminderTriggeredInput): Sla
   if (typeof input.scheduledFor === 'number' && Number.isFinite(input.scheduledFor)) {
     fields.push(
       mrkdwn(
-        `*Scheduled For*\n${formatDate(new Date(input.scheduledFor).toISOString(), {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })}`
+        `*Scheduled For*\n${formatSlackDate(
+          input.scheduledFor,
+          '{date_short} at {time}',
+          formatDate(input.scheduledFor, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        )}`
       )
     );
   }
@@ -424,7 +440,7 @@ export function buildTestConnectionBlocks(spaceId: string, userId: string): Slac
     context(
       mrkdwn(`Workspace: \`${spaceId}\``),
       mrkdwn(`Configured by: \`${userId}\``),
-      mrkdwn(`Time: ${formatDate(new Date().toISOString())}`)
+      mrkdwn(`Time: ${formatSlackDate(Date.now(), '{date_short} at {time}', formatDate(new Date().toISOString()))}`)
     ),
   ];
 }

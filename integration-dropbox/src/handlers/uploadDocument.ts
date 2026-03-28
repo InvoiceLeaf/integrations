@@ -1,4 +1,5 @@
 import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { trimToUndefined, toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type {
   DropboxIntegrationConfig,
   UploadDocumentInput,
@@ -113,17 +114,3 @@ function joinDropboxPath(folder: string, fileName: string): string {
   return `${folder}/${normalizedFile}`.replace(/\/+/g, '/');
 }
 
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}

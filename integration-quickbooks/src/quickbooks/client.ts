@@ -1,6 +1,6 @@
+import { trimToUndefined, requestWithRetry, type RequestWithRetryOptions } from '@invoiceleaf/integration-sdk';
+
 const DEFAULT_QUICKBOOKS_BASE_URL = 'https://quickbooks.api.intuit.com/v3/company';
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-const MAX_REQUEST_ATTEMPTS = 3;
 
 interface QueryResponse<T> {
   QueryResponse?: T;
@@ -67,13 +67,15 @@ export interface QuickBooksBillInput {
   Line: QuickBooksBillLineInput[];
 }
 
-interface QuickBooksInvoice {
+export interface QuickBooksInvoice {
   Id: string;
+  SyncToken: string;
   DocNumber?: string;
 }
 
-interface QuickBooksBill {
+export interface QuickBooksBill {
   Id: string;
+  SyncToken: string;
   DocNumber?: string;
 }
 
@@ -112,7 +114,7 @@ export class QuickBooksClient {
   async getCompanyInfo(): Promise<QuickBooksCompanyInfo> {
     const response = await this.request<{ CompanyInfo?: QuickBooksCompanyInfo }>(
       'GET',
-      `/companyinfo/${encodeURIComponent(this.realmId)}`
+      `/companyinfo/${this.realmId}`
     );
     return response.CompanyInfo ?? {};
   }
@@ -155,6 +157,15 @@ export class QuickBooksClient {
     return vendor;
   }
 
+  async getInvoice(id: string): Promise<QuickBooksInvoice> {
+    const response = await this.request<{ Invoice?: QuickBooksInvoice }>('GET', `/invoice/${id}`);
+    const invoice = response.Invoice;
+    if (!invoice?.Id) {
+      throw new Error(`QuickBooks did not return invoice ${id}.`);
+    }
+    return invoice;
+  }
+
   async findInvoiceByDocNumber(docNumber: string): Promise<QuickBooksInvoice | null> {
     const response = await this.query<{ Invoice?: QuickBooksInvoice[] }>(
       qbQuery('Invoice', 'DocNumber', docNumber)
@@ -171,6 +182,24 @@ export class QuickBooksClient {
     return invoice;
   }
 
+  async updateInvoice(input: QuickBooksInvoiceInput & { Id: string; SyncToken: string }): Promise<QuickBooksInvoice> {
+    const response = await this.request<{ Invoice?: QuickBooksInvoice }>('POST', '/invoice', input);
+    const invoice = response.Invoice;
+    if (!invoice?.Id) {
+      throw new Error('QuickBooks did not return an invoice id after update.');
+    }
+    return invoice;
+  }
+
+  async getBill(id: string): Promise<QuickBooksBill> {
+    const response = await this.request<{ Bill?: QuickBooksBill }>('GET', `/bill/${id}`);
+    const bill = response.Bill;
+    if (!bill?.Id) {
+      throw new Error(`QuickBooks did not return bill ${id}.`);
+    }
+    return bill;
+  }
+
   async findBillByDocNumber(docNumber: string): Promise<QuickBooksBill | null> {
     const response = await this.query<{ Bill?: QuickBooksBill[] }>(
       qbQuery('Bill', 'DocNumber', docNumber)
@@ -183,6 +212,15 @@ export class QuickBooksClient {
     const bill = response.Bill;
     if (!bill?.Id) {
       throw new Error('QuickBooks did not return a bill id.');
+    }
+    return bill;
+  }
+
+  async updateBill(input: QuickBooksBillInput & { Id: string; SyncToken: string }): Promise<QuickBooksBill> {
+    const response = await this.request<{ Bill?: QuickBooksBill }>('POST', '/bill', input);
+    const bill = response.Bill;
+    if (!bill?.Id) {
+      throw new Error('QuickBooks did not return a bill id after update.');
     }
     return bill;
   }
@@ -243,76 +281,20 @@ export class QuickBooksClient {
       init.body = JSON.stringify(body);
     }
 
-    return requestWithRetry<T>(url.toString(), init, method);
+    const retryOptions: RequestWithRetryOptions = {
+      method,
+      createError: (message, status, responseBody) => {
+        const error = new QuickBooksApiError(message, status, responseBody);
+        return error as QuickBooksApiError & { status: number };
+      },
+    };
+
+    return requestWithRetry<T>(url.toString(), init, retryOptions);
   }
-}
-
-const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429, 502, 503]);
-
-async function requestWithRetry<T>(url: string, init: RequestInit, method: string): Promise<T> {
-  let lastError: Error | null = null;
-  const isIdempotent = method === 'GET';
-
-  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
-    try {
-      const response = await fetch(url, init);
-      const body = await response.text();
-
-      if (!response.ok) {
-        const error = new QuickBooksApiError(
-          `QuickBooks API request failed with status ${response.status}`,
-          response.status,
-          body
-        );
-
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(response.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
-
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-
-        throw error;
-      }
-
-      if (body.length === 0) {
-        return {} as T;
-      }
-
-      return JSON.parse(body) as T;
-    } catch (error) {
-      lastError = error as Error;
-      if (error instanceof QuickBooksApiError) {
-        const canRetryStatus = isIdempotent
-          ? RETRYABLE_STATUSES.has(error.status)
-          : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
-        if (attempt < MAX_REQUEST_ATTEMPTS && canRetryStatus) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-      } else if (isIdempotent && attempt < MAX_REQUEST_ATTEMPTS) {
-        await sleep(backoffMs(attempt));
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  throw lastError ?? new Error('QuickBooks request failed after retries.');
 }
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 const MAX_QUERY_VALUE_LENGTH = 500;
@@ -343,10 +325,3 @@ function qbQuery(entity: string, field: string, value: string, maxResults = 1): 
   return `select * from ${entity} where ${field} = '${escapeSqlValue(value)}' maxresults ${maxResults}`;
 }
 
-function backoffMs(attempt: number): number {
-  return Math.min(2000, 250 * 2 ** (attempt - 1));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}

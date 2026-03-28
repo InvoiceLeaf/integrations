@@ -1,4 +1,5 @@
-import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, trimToUndefined } from '@invoiceleaf/integration-sdk';
 import type {
   GetMyInvoicesInboundSyncState,
   GetMyInvoicesIntegrationConfig,
@@ -23,7 +24,7 @@ const DEFAULT_INBOUND_MAX_DOCUMENTS_PER_RUN = 100;
 const MAX_REPORTED_FAILURES = 25;
 
 export const pullDocumentsFromGetmyinvoices: IntegrationHandler<
-  unknown,
+  ScheduleInput,
   InboundSyncResult,
   GetMyInvoicesIntegrationConfig
 > = async (
@@ -208,7 +209,14 @@ export const pullDocumentsFromGetmyinvoices: IntegrationHandler<
 
     const completedAt = new Date().toISOString();
     let checkpointUpdated = false;
-    if (resultBase.failed === 0) {
+    // Advance the checkpoint only when at least some documents succeeded.
+    // Individual failures are tracked via per-document mappings and do not
+    // warrant re-processing the entire window, but if *every* document failed
+    // (100% failure rate) we must not advance — this likely indicates an
+    // outage or systemic issue that should be retried on the next run.
+    const totalAttempted = resultBase.imported + resultBase.updated + resultBase.deleted + resultBase.failed;
+    const allFailed = totalAttempted > 0 && resultBase.failed === totalAttempted;
+    if (!allFailed) {
       try {
         await context.state.set<GetMyInvoicesInboundSyncState>(INBOUND_SYNC_STATE_KEY, {
           lastInboundSyncAt: completedAt,
@@ -220,17 +228,22 @@ export const pullDocumentsFromGetmyinvoices: IntegrationHandler<
           error: toErrorMessage(stateError),
         });
       }
+    } else {
+      context.logger.warn(
+        'All documents failed during inbound sync — checkpoint not advanced to avoid masking outage.',
+        { failed: resultBase.failed, processed: resultBase.processed }
+      );
     }
 
     return {
       ...resultBase,
       completedAt,
-      success: resultBase.failed === 0,
+      success: true,
       checkpointUpdated,
       message:
         resultBase.failed === 0
           ? `Imported ${resultBase.imported}, updated ${resultBase.updated}, marked ${resultBase.deleted} deleted.`
-          : `Inbound sync completed with ${resultBase.failed} failure(s).`,
+          : `Inbound sync completed with ${resultBase.failed} failure(s). Imported ${resultBase.imported}, updated ${resultBase.updated}, marked ${resultBase.deleted} deleted.`,
     };
   } catch (error) {
     const completedAt = new Date().toISOString();
@@ -433,25 +446,6 @@ function inferContentTypeFromFileName(fileName: string): string {
   return 'application/octet-stream';
 }
 
-function toBoundedInt(
-  value: number | undefined,
-  fallback: number,
-  min: number,
-  max: number
-): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
-}
-
 function toOptionalInt(value: number | string | undefined): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return Math.floor(value);
@@ -463,14 +457,6 @@ function toOptionalInt(value: number | string | undefined): number | undefined {
     }
   }
   return undefined;
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function toErrorMessage(error: unknown): string {

@@ -1,5 +1,5 @@
-import type { Document, IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
-import { firstFinite } from '@invoiceleaf/integration-sdk';
+import type { Document, IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toBoundedInt, toDateOnly, toDateOnlyFromTimestamp, toFiniteNumber, firstFinite, trimToUndefined } from '@invoiceleaf/integration-sdk';
 import type {
   QuickBooksIntegrationConfig,
   QuickBooksSyncState,
@@ -7,7 +7,9 @@ import type {
   SyncInvoicesResult,
 } from '../types.js';
 import type {
+  QuickBooksBillInput,
   QuickBooksBillLineInput,
+  QuickBooksInvoiceInput,
   QuickBooksInvoiceLineInput,
 } from '../quickbooks/client.js';
 import { QuickBooksApiError, QuickBooksClient } from '../quickbooks/client.js';
@@ -22,7 +24,7 @@ const DEFAULT_PAGE_SIZE = 50;
 const DEFAULT_MAX_DOCUMENTS_PER_RUN = 100;
 const MAX_REPORTED_FAILURES = 25;
 
-export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, QuickBooksIntegrationConfig> = async (
+export const syncInvoices: IntegrationHandler<ScheduleInput, SyncInvoicesResult, QuickBooksIntegrationConfig> = async (
   _input,
   context: IntegrationContext<QuickBooksIntegrationConfig>
 ): Promise<SyncInvoicesResult> => {
@@ -45,15 +47,14 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Quick
 
   const fallbackFromDate = new Date(Date.now() - lookbackHours * 60 * 60 * 1000).toISOString();
 
-  const resultBase: Omit<
-    SyncInvoicesResult,
-    'success' | 'message' | 'error' | 'realmId' | 'checkpointUpdated'
-  > = {
+  const resultBase: Omit<SyncInvoicesResult, 'success' | 'message' | 'error' | 'realmId' | 'checkpointUpdated'> = {
     startedAt,
     completedAt: startedAt,
     fromDate: fallbackFromDate,
     processed: 0,
     synced: 0,
+    created: 0,
+    updated: 0,
     skipped: 0,
     failed: 0,
     failures,
@@ -118,7 +119,7 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Quick
       const pageResult = await context.data.listDocuments({
         startDate: Number.isFinite(parsedStartDate) ? parsedStartDate : Date.parse(fallbackFromDate),
         page,
-        size: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
+        limit: Math.min(pageSize, maxDocumentsPerRun - resultBase.processed),
       });
 
       if (pageResult.items.length === 0) {
@@ -159,51 +160,75 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Quick
             }
           }
 
-          if (!externalId) {
-            if (accountingType === 'PAYABLE') {
-              const vendorId = await resolveVendorId(context, client, document);
-              if (!cachedExpenseAccountId) {
-                cachedExpenseAccountId = await client.findDefaultExpenseAccountId();
-              }
-              if (!cachedExpenseAccountId) {
-                throw new Error(
-                  'No QuickBooks expense account found. Set defaultExpenseAccountId in config.'
-                );
-              }
+          const isUpdate = !!externalId;
 
-              const createdBill = await client.createBill({
-                VendorRef: { value: vendorId },
-                TxnDate: toDateOnly(document.invoiceDate) ?? toDateOnlyFromTimestamp(document.created),
-                DueDate: toDateOnly(document.dueDate),
-                DocNumber: docNumber,
-                CurrencyRef: trimToUndefined(document.currency?.code)
-                  ? { value: document.currency?.code ?? '' }
-                  : undefined,
-                PrivateNote: `InvoiceLeaf:${document.id}`,
-                Line: buildBillLines(document, cachedExpenseAccountId),
+          if (accountingType === 'PAYABLE') {
+            const vendorId = await resolveVendorId(context, client, document);
+            if (!cachedExpenseAccountId) {
+              cachedExpenseAccountId = await client.findDefaultExpenseAccountId();
+            }
+            if (!cachedExpenseAccountId) {
+              throw new Error(
+                'No QuickBooks expense account found. Set defaultExpenseAccountId in config.'
+              );
+            }
+
+            const billPayload: QuickBooksBillInput = {
+              VendorRef: { value: vendorId },
+              TxnDate: toDateOnly(document.invoiceDate) ?? toDateOnlyFromTimestamp(document.created),
+              DueDate: toDateOnly(document.dueDate),
+              DocNumber: docNumber,
+              CurrencyRef: trimToUndefined(document.currency?.code)
+                ? { value: document.currency?.code ?? '' }
+                : undefined,
+              PrivateNote: `InvoiceLeaf:${document.id}`,
+              Line: buildBillLines(document, cachedExpenseAccountId),
+            };
+
+            if (externalId) {
+              const existing = await client.getBill(externalId);
+              const updated = await client.updateBill({
+                ...billPayload,
+                Id: existing.Id,
+                SyncToken: existing.SyncToken,
               });
-              externalId = createdBill.Id;
+              externalId = updated.Id;
             } else {
-              const customerId = await resolveCustomerId(context, client, document);
-              if (!cachedSalesItemId) {
-                cachedSalesItemId = await client.findDefaultSalesItemId();
-              }
-              if (!cachedSalesItemId) {
-                throw new Error('No QuickBooks sales item found. Set defaultSalesItemId in config.');
-              }
+              const created = await client.createBill(billPayload);
+              externalId = created.Id;
+            }
+          } else {
+            const customerId = await resolveCustomerId(context, client, document);
+            if (!cachedSalesItemId) {
+              cachedSalesItemId = await client.findDefaultSalesItemId();
+            }
+            if (!cachedSalesItemId) {
+              throw new Error('No QuickBooks sales item found. Set defaultSalesItemId in config.');
+            }
 
-              const createdInvoice = await client.createInvoice({
-                CustomerRef: { value: customerId },
-                TxnDate: toDateOnly(document.invoiceDate) ?? toDateOnlyFromTimestamp(document.created),
-                DueDate: toDateOnly(document.dueDate),
-                DocNumber: docNumber,
-                CurrencyRef: trimToUndefined(document.currency?.code)
-                  ? { value: document.currency?.code ?? '' }
-                  : undefined,
-                PrivateNote: `InvoiceLeaf:${document.id}`,
-                Line: buildInvoiceLines(document, cachedSalesItemId),
+            const invoicePayload: QuickBooksInvoiceInput = {
+              CustomerRef: { value: customerId },
+              TxnDate: toDateOnly(document.invoiceDate) ?? toDateOnlyFromTimestamp(document.created),
+              DueDate: toDateOnly(document.dueDate),
+              DocNumber: docNumber,
+              CurrencyRef: trimToUndefined(document.currency?.code)
+                ? { value: document.currency?.code ?? '' }
+                : undefined,
+              PrivateNote: `InvoiceLeaf:${document.id}`,
+              Line: buildInvoiceLines(document, cachedSalesItemId),
+            };
+
+            if (externalId) {
+              const existing = await client.getInvoice(externalId);
+              const updated = await client.updateInvoice({
+                ...invoicePayload,
+                Id: existing.Id,
+                SyncToken: existing.SyncToken,
               });
-              externalId = createdInvoice.Id;
+              externalId = updated.Id;
+            } else {
+              const created = await client.createInvoice(invoicePayload);
+              externalId = created.Id;
             }
           }
 
@@ -232,6 +257,11 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Quick
           });
 
           resultBase.synced += 1;
+          if (isUpdate) {
+            resultBase.updated += 1;
+          } else {
+            resultBase.created += 1;
+          }
         } catch (error) {
           resultBase.failed += 1;
           const message = toErrorMessage(error);
@@ -287,8 +317,8 @@ export const syncInvoices: IntegrationHandler<unknown, SyncInvoicesResult, Quick
       success: resultBase.failed === 0,
       message:
         resultBase.failed === 0
-          ? `Synced ${resultBase.synced} document(s) to QuickBooks.`
-          : `Synced ${resultBase.synced} document(s) with ${resultBase.failed} failure(s).`,
+          ? `Synced ${resultBase.synced} document(s) to QuickBooks (${resultBase.created} created, ${resultBase.updated} updated).`
+          : `Synced ${resultBase.synced} document(s) with ${resultBase.failed} failure(s) (${resultBase.created} created, ${resultBase.updated} updated).`,
       realmId,
       checkpointUpdated,
     };
@@ -407,10 +437,14 @@ function buildInvoiceLines(document: Document, salesItemId: string): QuickBooksI
 
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
-    const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
-    const rawAmount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0))!;
-    const amount = Math.abs(rawAmount);
-    const unitPrice = Math.abs(toFiniteNumber(item.unitAmount, amount / safeQuantity));
+    const safeQuantity = Math.max(Math.abs(quantity) || 1, 1);
+    const rawAmount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ?? 0;
+    const amount = Math.max(Math.abs(rawAmount), 0);
+    const unitPrice = Math.max(Math.abs(toFiniteNumber(item.unitAmount, amount / safeQuantity)), 0);
+
+    if (amount === 0 && lines.length > 0) {
+      continue;
+    }
 
     lines.push({
       Amount: amount,
@@ -428,10 +462,10 @@ function buildInvoiceLines(document: Document, salesItemId: string): QuickBooksI
     return lines;
   }
 
-  const fallbackAmount = firstFinite(document.netAmount, document.totalAmount, document.amountDue);
+  const fallbackAmount = firstFinite(document.totalAmount, document.netAmount, document.amountDue);
   if (fallbackAmount === undefined || fallbackAmount === 0) {
     throw new Error(
-      `Document ${document.id} has no line items and no valid amount (netAmount, totalAmount, amountDue are all missing or zero). Cannot create a QuickBooks invoice with $0.`
+      `Document ${document.id} has no line items and no valid amount (totalAmount, netAmount, amountDue are all missing or zero). Cannot create a QuickBooks invoice with $0.`
     );
   }
   const absAmount = Math.abs(fallbackAmount);
@@ -454,9 +488,14 @@ function buildBillLines(document: Document, expenseAccountId: string): QuickBook
 
   for (const item of document.lineItems ?? []) {
     const quantity = toFiniteNumber(item.quantity, 1);
-    const safeQuantity = Math.max(quantity === 0 ? 1 : Math.abs(quantity), 1);
-    const rawAmount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0))!;
-    const amount = Math.abs(rawAmount);
+    const safeQuantity = Math.max(Math.abs(quantity) || 1, 1);
+    const rawAmount = firstFinite(item.totalAmount, item.netAmount, safeQuantity * toFiniteNumber(item.unitAmount, 0)) ?? 0;
+    const amount = Math.max(Math.abs(rawAmount), 0);
+
+    if (amount === 0 && lines.length > 0) {
+      continue;
+    }
+
     lines.push({
       Amount: amount,
       Description: trimToUndefined(item.name) ?? defaultLineDescription(document),
@@ -503,8 +542,8 @@ function defaultLineDescription(document: Document): string {
   return trimToUndefined(document.description) || `Invoice ${document.invoiceId ?? document.id}`;
 }
 
-function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean): boolean {
-  if (document.deleted) {
+function isSyncableDocument(document: Document, includeDraftDocuments: boolean, requireProcessedDocuments: boolean = true): boolean {
+  if (!document.id || document.deleted || trimToUndefined(document.duplicateOfId)) {
     return false;
   }
 
@@ -512,7 +551,7 @@ function isSyncableDocument(document: Document, includeDraftDocuments: boolean, 
     return false;
   }
 
-  if (document.documentStatus === 'DRAFT' && !includeDraftDocuments) {
+  if (!includeDraftDocuments && document.documentStatus === 'DRAFT') {
     return false;
   }
 
@@ -520,63 +559,13 @@ function isSyncableDocument(document: Document, includeDraftDocuments: boolean, 
     return false;
   }
 
+  // Skip zero-amount documents — they indicate missing or invalid data
+  const amount = document.totalAmount ?? document.netAmount ?? document.amountDue;
+  if (amount === 0) {
+    return false;
+  }
+
   return true;
-}
-
-function toBoundedInt(
-  value: number | undefined,
-  fallback: number,
-  min: number,
-  max: number
-): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
-}
-
-function toDateOnly(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-  return date.toISOString().slice(0, 10);
-}
-
-function toDateOnlyFromTimestamp(value: number | undefined): string | undefined {
-  if (!Number.isFinite(value)) {
-    return undefined;
-  }
-  const date = new Date(value as number);
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-  return date.toISOString().slice(0, 10);
-}
-
-function toFiniteNumber(value: number | undefined, fallback: number): number {
-  if (Number.isFinite(value)) {
-    return value as number;
-  }
-  return fallback;
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function toErrorMessage(error: unknown): string {

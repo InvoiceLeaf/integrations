@@ -9,9 +9,18 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "book",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-lexoffice/icon.svg",
   "category": "accounting",
-  "tags": ["lexoffice", "voucher", "accounting", "document-sync"],
-  "dataAccess": ["documents", "companies"],
+  "tags": [
+    "lexoffice",
+    "voucher",
+    "accounting",
+    "document-sync"
+  ],
+  "dataAccess": [
+    "documents",
+    "companies"
+  ],
   "externalAuth": [
     {
       "provider": "lexoffice",
@@ -102,12 +111,22 @@
       {
         "title": "Connection",
         "description": "Configure API-key access",
-        "fields": ["apiBaseUrl", "apiKey"]
+        "fields": [
+          "apiBaseUrl",
+          "apiKey"
+        ]
       },
       {
         "title": "Sync Limits",
         "description": "Checkpoint window and per-run throughput",
-        "fields": ["initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "includeDraftDocuments", "requireProcessedDocuments", "fallbackFileNamePrefix"]
+        "fields": [
+          "initialSyncLookbackHours",
+          "maxDocumentsPerRun",
+          "pageSize",
+          "includeDraftDocuments",
+          "requireProcessedDocuments",
+          "fallbackFileNamePrefix"
+        ]
       }
     ]
   }

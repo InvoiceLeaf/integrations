@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { IntegrationContext, IntegrationHandler, ScheduleInput } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage, type IntegrationContext, type IntegrationHandler, type ScheduleInput } from '@invoiceleaf/integration-sdk';
 import type { CrawlResult, GmailAttachment, GmailConfig } from '../types.js';
 import { buildAttachmentStateKey } from '../utils/dedupe.js';
 import { GmailApiError, GmailClient } from '../gmail/client.js';
@@ -33,6 +33,16 @@ async function importAttachment(
     context.logger.warn('Could not check dedup state; proceeding with import to avoid data loss.', {
       stateKey,
       error: toErrorMessage(stateError),
+    });
+  }
+
+  // Claim the state key before importing to prevent duplicate imports from concurrent executions
+  try {
+    await context.state.set(stateKey, 'pending', { ttlSeconds });
+  } catch (claimError) {
+    context.logger.warn('Could not claim dedup state; proceeding with import.', {
+      stateKey,
+      error: toErrorMessage(claimError),
     });
   }
 
@@ -181,11 +191,4 @@ function toBase64(data: string): string {
   const remainder = normalized.length % 4;
   const padded = remainder === 0 ? normalized : `${normalized}${'='.repeat(4 - remainder)}`;
   return Buffer.from(padded, 'base64').toString('base64');
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
 }

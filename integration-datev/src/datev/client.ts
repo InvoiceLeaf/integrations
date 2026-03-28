@@ -1,3 +1,5 @@
+import { requestWithRetry, toBoundedInt, trimToUndefined } from '@invoiceleaf/integration-sdk';
+import type { RequestWithRetryOptions } from '@invoiceleaf/integration-sdk';
 import type {
   DatevAuthProvider,
   DatevClientDetails,
@@ -10,11 +12,6 @@ import type {
   DatevIntegrationConfig,
   DatevProtocolEntry,
 } from '../types.js';
-
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-const SAFE_RETRY_STATUSES_FOR_MUTATING = new Set([429]);
-const DEFAULT_MAX_REQUEST_ATTEMPTS = 3;
-const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
 export const DATEV_API_BASE_URLS: Record<DatevEnvironment, string> = {
   production: 'https://accounting-dxso-jobs.api.datev.de/platform/v2',
@@ -149,13 +146,13 @@ export class DatevClient {
     this.baseUrl = trimTrailingSlash(options.baseUrl);
     this.maxRequestAttempts = toBoundedInt(
       options.maxRequestAttempts,
-      DEFAULT_MAX_REQUEST_ATTEMPTS,
+      3,
       1,
       5
     );
     this.requestTimeoutMs = toBoundedInt(
       options.requestTimeoutMs,
-      DEFAULT_REQUEST_TIMEOUT_MS,
+      30_000,
       1_000,
       120_000
     );
@@ -224,7 +221,7 @@ export class DatevClient {
       method: 'PUT',
       path: `/clients/${encodeURIComponent(clientId)}/dxso-jobs/${encodeURIComponent(jobId)}`,
       body: {
-        ready: ready ? 'true' : 'false',
+        ready,
       },
       contentType: 'application/merge-patch+json',
     });
@@ -256,80 +253,38 @@ export class DatevClient {
       }
     }
 
-    let lastError: Error | null = null;
-    const isIdempotent = input.method === 'GET';
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.accessToken}`,
+      Accept: 'application/json',
+      'X-DATEV-Client-Id': this.xDatevClientId,
+      'User-Agent': this.userAgent,
+    };
 
-    for (let attempt = 1; attempt <= this.maxRequestAttempts; attempt += 1) {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
-      try {
-        const headers: Record<string, string> = {
-          Authorization: `Bearer ${this.accessToken}`,
-          Accept: 'application/json',
-          'X-DATEV-Client-Id': this.xDatevClientId,
-          'User-Agent': this.userAgent,
-        };
-
-        let body: unknown;
-        if (input.body !== undefined) {
-          if (input.body instanceof FormData) {
-            body = input.body;
-          } else {
-            headers['Content-Type'] = trimToUndefined(input.contentType) ?? 'application/json';
-            body = JSON.stringify(input.body);
-          }
-        }
-
-        const response = await fetch(url.toString(), {
-          method: input.method,
-          headers,
-          body: body as RequestInit['body'],
-          signal: controller.signal,
-        });
-
-        const responseBody = await response.text();
-        if (!response.ok) {
-          const error = new DatevApiError(
-            `DATEV API request failed with status ${response.status}`,
-            response.status,
-            responseBody
-          );
-          const canRetryStatus = isIdempotent
-            ? RETRYABLE_STATUSES.has(response.status)
-            : SAFE_RETRY_STATUSES_FOR_MUTATING.has(response.status);
-          if (attempt < this.maxRequestAttempts && canRetryStatus) {
-            await sleep(backoffMs(attempt));
-            continue;
-          }
-          throw error;
-        }
-
-        if (responseBody.length === 0) {
-          return {} as T;
-        }
-
-        return JSON.parse(responseBody) as T;
-      } catch (error) {
-        lastError = error as Error;
-        if (error instanceof DatevApiError) {
-          const canRetryStatus = isIdempotent
-            ? RETRYABLE_STATUSES.has(error.status)
-            : SAFE_RETRY_STATUSES_FOR_MUTATING.has(error.status);
-          if (attempt < this.maxRequestAttempts && canRetryStatus) {
-            await sleep(backoffMs(attempt));
-            continue;
-          }
-        } else if (isIdempotent && attempt < this.maxRequestAttempts) {
-          await sleep(backoffMs(attempt));
-          continue;
-        }
-        throw error;
-      } finally {
-        clearTimeout(timeout);
+    let body: RequestInit['body'] | undefined;
+    if (input.body !== undefined) {
+      if (input.body instanceof FormData) {
+        body = input.body;
+      } else {
+        headers['Content-Type'] = trimToUndefined(input.contentType) ?? 'application/json';
+        body = JSON.stringify(input.body);
       }
     }
 
-    throw lastError ?? new Error('DATEV API request failed after retries.');
+    const init: RequestInit = {
+      method: input.method,
+      headers,
+      body,
+    };
+
+    const retryOptions: RequestWithRetryOptions = {
+      method: input.method,
+      maxAttempts: this.maxRequestAttempts,
+      timeoutMs: this.requestTimeoutMs,
+      createError: (message, status, responseBody) =>
+        new DatevApiError(message, status, responseBody),
+    };
+
+    return requestWithRetry<T>(url.toString(), init, retryOptions);
   }
 }
 
@@ -388,36 +343,6 @@ export function formatEndpointPath(
 
 function normalizePath(path: string): string {
   return path.startsWith('/') ? path : `/${path}`;
-}
-
-function backoffMs(attempt: number): number {
-  return Math.min(2000, 250 * 2 ** (attempt - 1));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function toBoundedInt(value: number | undefined, fallback: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  const rounded = Math.floor(value as number);
-  if (rounded < min) {
-    return min;
-  }
-  if (rounded > max) {
-    return max;
-  }
-  return rounded;
-}
-
-function trimToUndefined(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
 }
 
 function trimTrailingSlash(value: string): string {

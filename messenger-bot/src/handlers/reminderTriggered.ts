@@ -1,4 +1,5 @@
-import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
+import type { IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import type { MessengerBotConfig } from '../types.js';
 
 type ReminderTriggeredInput = {
   reminderId?: string;
@@ -54,10 +55,7 @@ function extractMessageText(
   return 'Reminder triggered.';
 }
 
-export const buildReminderTriggeredMessage = async (
-  input: ReminderTriggeredInput | Record<string, unknown>,
-  context: IntegrationContext
-): Promise<ReminderTriggeredOutput> => {
+export const buildReminderTriggeredMessage: IntegrationHandler<ReminderTriggeredInput | Record<string, unknown>, ReminderTriggeredOutput, MessengerBotConfig> = async (input, context) => {
   try {
     context.logger.info('Building Messenger payload for reminder.triggered', {
       input,
@@ -72,8 +70,8 @@ export const buildReminderTriggeredMessage = async (
     };
   } catch (error) {
     context.logger.error('Failed to build reminder.triggered payload', {
-      error: (error as Error).message,
+      error: error instanceof Error ? error.message : String(error),
     });
-    return { success: false, error: `Handler error: ${(error as Error).message}` };
+    return { success: false, error: `Handler error: ${error instanceof Error ? error.message : String(error)}` };
   }
 };

@@ -129,7 +129,7 @@ function checkVendorFilter(
   // Check if any filter matches (case-insensitive, partial match)
   const matches = vendorFilter.some((filterVendor) => {
     const normalizedFilter = filterVendor.toLowerCase().trim();
-    return documentVendor.includes(normalizedFilter) || normalizedFilter.includes(documentVendor);
+    return documentVendor.includes(normalizedFilter);
   });
 
   if (!matches) {

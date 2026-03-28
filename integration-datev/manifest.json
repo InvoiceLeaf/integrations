@@ -9,10 +9,19 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "book",
-  "iconUrl": "https://app.invoiceleaf.com/img/integrations/datev.png",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-datev/icon.svg",
   "category": "accounting",
-  "tags": ["datev", "accounting", "dxso", "document-import", "oauth2"],
-  "dataAccess": ["documents", "companies"],
+  "tags": [
+    "datev",
+    "accounting",
+    "dxso",
+    "document-import",
+    "oauth2"
+  ],
+  "dataAccess": [
+    "documents",
+    "companies"
+  ],
   "externalAuth": [
     {
       "provider": "datev-openid",
@@ -78,7 +87,9 @@
       "type": "event",
       "name": "On Document Created",
       "description": "Sync newly created documents to DATEV",
-      "events": ["document.created"],
+      "events": [
+        "document.created"
+      ],
       "handler": "syncInvoiceEvent",
       "configurable": true
     },
@@ -87,7 +98,9 @@
       "type": "event",
       "name": "On Document Updated",
       "description": "Sync updated documents to DATEV",
-      "events": ["document.updated"],
+      "events": [
+        "document.updated"
+      ],
       "handler": "syncInvoiceEvent",
       "configurable": true
     },
@@ -96,7 +109,9 @@
       "type": "event",
       "name": "On Document Deleted",
       "description": "Optionally request cancellation for mapped DATEV dxso jobs when documents are deleted",
-      "events": ["document.deleted"],
+      "events": [
+        "document.deleted"
+      ],
       "handler": "deleteDocumentEvent",
       "configurable": true
     }
@@ -127,7 +142,10 @@
         "properties": {
           "environment": {
             "type": "string",
-            "enum": ["production", "sandbox"],
+            "enum": [
+              "production",
+              "sandbox"
+            ],
             "default": "production"
           },
           "discoveryUrl": {
@@ -165,11 +183,19 @@
       "icon": "terminal",
       "inputSchema": {
         "type": "object",
-        "required": ["method", "path"],
+        "required": [
+          "method",
+          "path"
+        ],
         "properties": {
           "method": {
             "type": "string",
-            "enum": ["GET", "POST", "PUT", "DELETE"]
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE"
+            ]
           },
           "path": {
             "type": "string",
@@ -255,7 +281,11 @@
       "icon": "upload",
       "inputSchema": {
         "type": "object",
-        "required": ["jobId", "fileName", "fileContentBase64"],
+        "required": [
+          "jobId",
+          "fileName",
+          "fileContentBase64"
+        ],
         "properties": {
           "clientId": {
             "type": "string"
@@ -285,7 +315,9 @@
       "icon": "info",
       "inputSchema": {
         "type": "object",
-        "required": ["jobId"],
+        "required": [
+          "jobId"
+        ],
         "properties": {
           "clientId": {
             "type": "string"
@@ -304,7 +336,9 @@
       "icon": "check",
       "inputSchema": {
         "type": "object",
-        "required": ["jobId"],
+        "required": [
+          "jobId"
+        ],
         "properties": {
           "clientId": {
             "type": "string"
@@ -327,7 +361,9 @@
       "icon": "x",
       "inputSchema": {
         "type": "object",
-        "required": ["jobId"],
+        "required": [
+          "jobId"
+        ],
         "properties": {
           "clientId": {
             "type": "string"
@@ -346,7 +382,9 @@
       "icon": "list",
       "inputSchema": {
         "type": "object",
-        "required": ["jobId"],
+        "required": [
+          "jobId"
+        ],
         "properties": {
           "clientId": {
             "type": "string"
@@ -364,13 +402,20 @@
       "environment": {
         "type": "string",
         "title": "DATEV Environment",
-        "enum": ["production", "sandbox"],
+        "enum": [
+          "production",
+          "sandbox"
+        ],
         "default": "sandbox"
       },
       "authProvider": {
         "type": "string",
         "title": "Auth Provider",
-        "enum": ["datev-openid", "datev-openid-sandbox", "datev-idp-next"],
+        "enum": [
+          "datev-openid",
+          "datev-openid-sandbox",
+          "datev-idp-next"
+        ],
         "description": "Optional override for which configured DATEV OAuth provider to use."
       },
       "apiBaseUrl": {
@@ -466,22 +511,42 @@
       {
         "title": "Connection",
         "description": "Environment, OAuth provider, and DATEV API base URL",
-        "fields": ["environment", "authProvider", "apiBaseUrl", "xDatevClientId"]
+        "fields": [
+          "environment",
+          "authProvider",
+          "apiBaseUrl",
+          "xDatevClientId"
+        ]
       },
       {
         "title": "Default Endpoint Values",
         "description": "Path/body defaults used by DATEV dxso actions",
-        "fields": ["defaultClientId", "defaultImportType", "defaultAccountingMonth"]
+        "fields": [
+          "defaultClientId",
+          "defaultImportType",
+          "defaultAccountingMonth"
+        ]
       },
       {
         "title": "Sync Behavior",
         "description": "Scheduled/event sync behavior and per-run limits",
-        "fields": ["includeDraftDocuments", "requireProcessedDocuments", "initialSyncLookbackHours", "maxDocumentsPerRun", "pageSize", "enableEventSync", "cancelOnDeleteEvent"]
+        "fields": [
+          "includeDraftDocuments",
+          "requireProcessedDocuments",
+          "initialSyncLookbackHours",
+          "maxDocumentsPerRun",
+          "pageSize",
+          "enableEventSync",
+          "cancelOnDeleteEvent"
+        ]
       },
       {
         "title": "Reliability",
         "description": "Timeouts and retries for DATEV API calls",
-        "fields": ["requestTimeoutMs", "maxRequestAttempts"]
+        "fields": [
+          "requestTimeoutMs",
+          "maxRequestAttempts"
+        ]
       }
     ]
   }

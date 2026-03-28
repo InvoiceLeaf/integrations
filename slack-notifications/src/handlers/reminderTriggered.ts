@@ -5,6 +5,7 @@
  */
 
 import type { IntegrationContext, IntegrationHandler } from '@invoiceleaf/integration-sdk';
+import { toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type {
   ReminderNotificationResult,
   ReminderTriggeredInput,
@@ -89,7 +90,14 @@ export const handleReminderTriggered: IntegrationHandler<
     };
   }
 
+  if (!config.webhookUrl) {
+    return { success: false, error: 'Slack webhook URL is not configured.' };
+  }
+
   const normalized = normalizeReminderInput(input);
+  if (!normalized.spaceId && ctx.spaceId) {
+    normalized.spaceId = ctx.spaceId;
+  }
   const fallbackText = normalized.messageText || normalized.title || 'Reminder triggered.';
   const blocks = buildReminderTriggeredBlocks(normalized);
 
@@ -119,12 +127,12 @@ export const handleReminderTriggered: IntegrationHandler<
     logger.error('Failed to send reminder triggered Slack notification', {
       reminderId: normalized.reminderId,
       occurrenceId: normalized.occurrenceId,
-      error: (error as Error).message,
+      error: toErrorMessage(error),
     });
 
     return {
       success: false,
-      error: `Failed to send Slack notification: ${(error as Error).message}`,
+      error: `Failed to send Slack notification: ${toErrorMessage(error)}`,
       reminderId: normalized.reminderId,
       occurrenceId: normalized.occurrenceId,
     };
