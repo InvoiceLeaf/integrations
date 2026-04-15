@@ -66,7 +66,7 @@ export const handleDailySummary: IntegrationHandler<
     const result = await data.listDocuments({
       startDate: yesterday.getTime(),
       endDate: today.getTime(),
-      size: 1000,
+      limit: 1000,
     });
     documents = result.items;
   } catch (error) {
