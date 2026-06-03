@@ -1,11 +1,10 @@
 /**
  * Shared helpers for the ELSTER handlers: period parsing, document aggregation,
- * the cert-handle convention, the defensive filing-client accessor, and the
- * placeholder XML builder.
+ * and the placeholder XML builder.
  */
 
 import type { Document } from '@invoiceleaf/integration-sdk';
-import type { ElsterContext, FilingClient } from '../types.js';
+import type { ElsterContext } from '../types.js';
 import { USTVA_KENNZAHLEN, vatRateBucket } from '../mapping/index.js';
 
 /** Page size used when listing documents for a period/year. */
@@ -199,33 +198,4 @@ function escapeXml(value: string): string {
 /** Encode a UTF-8 string as base64 for {@link FileOutput.fileBase64}. */
 export function toBase64(value: string): string {
   return Buffer.from(value, 'utf8').toString('base64');
-}
-
-/**
- * Stable handle the plugin uses to reference the customer certificate host-side.
- * The certificate bytes / PIN never enter the isolate (spec 6.3); the host
- * resolves this handle to the encrypted credential.
- */
-export function certHandle(context: ElsterContext): string {
-  return `elster-cert:${context.installationId}`;
-}
-
-/**
- * Defensively obtain the privileged filing capability.
- *
- * The SDK `IntegrationContext` does not yet declare `filing` (Layer 2). It is
- * injected host-side only for verified integrations, so we read it through a
- * narrow cast and throw a clear error when it is absent.
- *
- * TODO(layer-2): replace this accessor with `context.filing` once the SDK adds
- *   `filing?: FilingClient` to IntegrationContext.
- */
-export function getFilingClient(context: ElsterContext): FilingClient {
-  const filing = (context as unknown as { filing?: FilingClient }).filing;
-  if (!filing) {
-    throw new Error(
-      'Filing capability is not available. ELSTER filing requires a verified installation with the "filing" capability granted host-side.'
-    );
-  }
-  return filing;
 }

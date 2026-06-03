@@ -2,10 +2,11 @@
  * ELSTER / German Tax integration handler exports.
  * Manifest is defined in manifest.json at package root.
  *
- * Public-mirror safe: this package contains only TypeScript that builds XML/Excel
- * and calls host capabilities. No native code, no certificates, no ERiC binary.
+ * Public-mirror safe: this package contains only TypeScript that builds XML/Excel.
+ * Export-only: produces ELSTER-ready USt-VA XML and EUER Excel files for manual
+ * upload in Mein ELSTER. No native code, no certificates, no ERiC submission.
  */
-export { exportUstva, exportEuer, previewUstva, filingStatus, submitUstva } from './handlers/index.js';
+export { exportUstva, exportEuer, previewUstva } from './handlers/index.js';
 
 export {
   DEFAULT_CATEGORY_MAPPING,
@@ -22,22 +23,9 @@ export type {
   ElsterIntegrationConfig,
   ElsterContext,
   UstvaReportingPeriod,
-  ExportMode,
   ExportUstvaInput,
   ExportEuerInput,
   PreviewUstvaInput,
   PreviewUstvaResult,
-  FilingStatusInput,
-  FilingStatusResult,
-  FilingStatusEntry,
-  SubmitUstvaInput,
-  SubmitUstvaResult,
   FileOutput,
-  ValidateReport,
-  FilingClient,
-  FilingValidateInput,
-  FilingValidateResult,
-  FilingSubmitInput,
-  FilingSubmitResult,
-  FilingValidationError,
 } from './types.js';

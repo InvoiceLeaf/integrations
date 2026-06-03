@@ -1,7 +1,7 @@
 {
   "id": "integration-elster",
   "name": "ELSTER / German Tax",
-  "description": "Generate ELSTER-ready USt-Voranmeldung (XML) and EUER (Excel) files, and optionally submit USt-VA to the Finanzamt via ERiC using your own ELSTER certificate.",
+  "description": "Generate ELSTER-ready USt-Voranmeldung (XML) and EUER (Excel) files for manual upload in Mein ELSTER.",
   "version": "1.0.0",
   "author": {
     "name": "InvoiceLeaf",
@@ -25,9 +25,6 @@
     "companies",
     "categories",
     "tags"
-  ],
-  "capabilities": [
-    "filing"
   ],
   "configSchema": {
     "type": "object",
@@ -54,18 +51,6 @@
           "Quarterly"
         ],
         "description": "Reporting frequency for the USt-Voranmeldung."
-      },
-      "certificate": {
-        "type": "string",
-        "title": "ELSTER Certificate",
-        "format": "file",
-        "description": "Your ELSTER certificate file (.pfx / .p12). Stored encrypted; used only host-side for ERiC submission, never exposed to the plugin sandbox."
-      },
-      "certificatePin": {
-        "type": "string",
-        "title": "Certificate PIN",
-        "format": "password",
-        "description": "PIN protecting the ELSTER certificate. Stored encrypted; used only host-side for ERiC submission."
       }
     },
     "required": [
@@ -78,7 +63,7 @@
     {
       "id": "ustva-xml",
       "name": "USt-Voranmeldung (ELSTER)",
-      "description": "Build an ELSTER-ready USt-VA XML for a single reporting period. Use \"Validate only\" to check the figures against ERiC without producing a download.",
+      "description": "Build an ELSTER-ready USt-VA XML for a single reporting period, ready to upload yourself in Mein ELSTER.",
       "format": "custom",
       "extension": "xml",
       "mimeType": "application/xml",
@@ -117,19 +102,6 @@
               "Oct 2026",
               "Nov 2026",
               "Dec 2026"
-            ]
-          },
-          "mode": {
-            "type": "string",
-            "title": "Mode",
-            "default": "download",
-            "enum": [
-              "download",
-              "validate"
-            ],
-            "enumNames": [
-              "Download file",
-              "Validate only"
             ]
           }
         },
@@ -180,56 +152,6 @@
         },
         "required": [
           "period"
-        ]
-      }
-    },
-    {
-      "id": "filing-status",
-      "name": "Get filing status",
-      "description": "Return the recorded filing history / status for this installation. Read-only; AI-callable.",
-      "handler": "filingStatus",
-      "icon": "info",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "period": {
-            "type": "string",
-            "title": "Period",
-            "description": "Optional period filter (YYYY-MM or YYYY-Qn)."
-          }
-        }
-      }
-    },
-    {
-      "id": "submit-ustva",
-      "name": "Submit USt-VA to Finanzamt",
-      "description": "Rebuild, validate, and submit the USt-VA to the Finanzamt via ERiC. Irreversible. Requires an explicit UI confirmation token. NOT callable by the AI.",
-      "handler": "submitUstva",
-      "icon": "send",
-      "internal": true,
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "period": {
-            "type": "string",
-            "title": "Period",
-            "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
-          },
-          "confirmToken": {
-            "type": "string",
-            "title": "Confirmation Token",
-            "description": "One-time token minted by the UI confirmation step. Required to authorize the irreversible submission."
-          },
-          "testMode": {
-            "type": "boolean",
-            "title": "Test Mode",
-            "default": true,
-            "description": "When true, submit against the ERiC test Finanzamt (Testmerker) instead of production."
-          }
-        },
-        "required": [
-          "period",
-          "confirmToken"
         ]
       }
     }
