@@ -1,0 +1,41 @@
+{
+  "name": "@invoiceleaf/integration-elster",
+  "version": "1.0.0",
+  "description": "ELSTER / German Tax integration for InvoiceLeaf: USt-VA and EUER export plus verified ERiC filing via host capability",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "invoiceleaf",
+    "integration",
+    "elster",
+    "tax",
+    "ustva",
+    "euer"
+  ],
+  "author": "InvoiceLeaf <support@invoiceleaf.com>",
+  "license": "MIT",
+  "peerDependencies": {
+    "@invoiceleaf/integration-sdk": "^2.0.0"
+  },
+  "devDependencies": {
+    "@invoiceleaf/integration-sdk": "file:../../integration-sdk",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist",
+    "manifest.json",
+    "README.md"
+  ]
+}
