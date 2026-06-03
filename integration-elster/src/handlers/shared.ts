@@ -20,15 +20,15 @@ export interface ParsedPeriod {
   endMs: number;
   /** Normalized canonical period string (echoed in outputs). */
   canonical: string;
+  /** Official ELSTER Zeitraum code: "01".."12" for months, "41".."44" for quarters. */
+  zeitraum: string;
 }
 
 /**
- * Parse a USt-VA period string into a date window.
- * Accepts "YYYY-MM" (monthly) and "YYYY-Qn" (quarterly).
+ * Parse a USt-VA period string into a date window and the official ELSTER
+ * Zeitraum code. Accepts "YYYY-MM" (monthly) and "YYYY-Qn" (quarterly).
  *
- * TODO(period): the canonical ELSTER Zeitraum encoding (e.g. month 41-44 for
- *   quarters) is NOT applied here — only the date window is computed. The XML
- *   builder must translate `canonical` into the official Zeitraum code.
+ * ELSTER Zeitraum encoding: months are "01".."12"; quarters are "41".."44".
  */
 export function parsePeriod(period: string): ParsedPeriod {
   const monthly = /^(\d{4})-(\d{2})$/.exec(period);
@@ -40,7 +40,8 @@ export function parsePeriod(period: string): ParsedPeriod {
     }
     const startMs = Date.UTC(year, month - 1, 1);
     const endMs = Date.UTC(year, month, 1);
-    return { year, startMs, endMs, canonical: `${year}-${String(month).padStart(2, '0')}` };
+    const mm = String(month).padStart(2, '0');
+    return { year, startMs, endMs, canonical: `${year}-${mm}`, zeitraum: mm };
   }
 
   const quarterly = /^(\d{4})-Q([1-4])$/.exec(period);
@@ -50,7 +51,8 @@ export function parsePeriod(period: string): ParsedPeriod {
     const startMonth = (quarter - 1) * 3; // 0,3,6,9
     const startMs = Date.UTC(year, startMonth, 1);
     const endMs = Date.UTC(year, startMonth + 3, 1);
-    return { year, startMs, endMs, canonical: `${year}-Q${quarter}` };
+    // ELSTER encodes quarters as 41..44.
+    return { year, startMs, endMs, canonical: `${year}-Q${quarter}`, zeitraum: String(40 + quarter) };
   }
 
   throw new Error(`Unrecognized period format "${period}". Expected "YYYY-MM" or "YYYY-Qn".`);
@@ -152,36 +154,107 @@ function round2(value: number): number {
 }
 
 /**
- * Build the placeholder ELSTER USt-VA Nutzdaten/transfer XML.
+ * ELSTER Anmeldungssteuern namespace + version attribute for a tax year.
  *
- * TODO(xml): this is a PLACEHOLDER. A real implementation must produce a valid
- *   ELSTER transfer document (Elster/TransferHeader + DatenTeil/Nutzdaten with the
- *   correct UStVA Steuerfall structure, Steuernummer/Finanzamt encoding, the
- *   official Zeitraum code, and the Kennzahlen as Kz elements) conforming to the
- *   Steuerdatenschema for the tax year. Until then this is NOT submittable.
+ * The namespace path and `version` are the SCHEMA YEAR (e.g. v2026 / "2026").
+ * ELSTER publishes one schema per year; this must match a schema year ELSTER
+ * actually accepts. Verify against the official Steuerdatenschema (developer
+ * portal) when a new tax year opens.
  */
-export function buildUstvaXml(args: {
-  period: string;
-  steuernummer: string | undefined;
-  finanzamt: string | undefined;
-  kennzahlen: Record<string, number>;
-}): string {
-  const kzLines = Object.entries(args.kennzahlen)
-    .map(([kz, value]) => `      <Kz nr="${escapeXml(kz)}">${value.toFixed(2)}</Kz>`)
-    .join('\n');
+export function ustvaNamespace(year: number): string {
+  return `http://finkonsens.de/elster/elsteranmeldung/ustva/v${year}`;
+}
 
-  // PLACEHOLDER structure — not a valid ELSTER schema document.
+/**
+ * Normalize the configured Steuernummer to the 13-digit bundeseinheitliche
+ * (federal) format ELSTER requires in the XML.
+ *
+ * We require the 13-digit form directly rather than converting from the regional
+ * format: the regional -> 13-digit conversion is Bundesland-specific and error
+ * prone, and users get the 13-digit number from the official ELSTER converter.
+ */
+export function normalizeSteuernummer(value: string | undefined): string {
+  const digits = (value ?? '').replace(/\D/g, '');
+  if (digits.length !== 13) {
+    throw new Error(
+      'ELSTER requires the 13-digit bundeseinheitliche Steuernummer. Set it in the integration settings (convert your regional Steuernummer with the official ELSTER converter).'
+    );
+  }
+  return digits;
+}
+
+/** Current date as YYYYMMDD (UTC), for the Erstellungsdatum element. */
+export function todayYyyymmdd(): string {
+  const d = new Date();
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}${m}${day}`;
+}
+
+export interface BuildUstvaArgs {
+  /** Tax year (also selects the schema namespace/version). */
+  year: number;
+  /** ELSTER Zeitraum code ("01".."12" or "41".."44"). */
+  zeitraum: string;
+  /** 13-digit bundeseinheitliche Steuernummer. */
+  steuernummer: string;
+  /** Business / data-supplier name. */
+  companyName: string;
+  /** Creation date, YYYYMMDD. */
+  erstellungsdatum: string;
+  /** Computed Kennzahlen keyed by Kennziffer (e.g. "81", "66", "83"). */
+  kennzahlen: Record<string, number>;
+}
+
+/**
+ * Build an ELSTER-ready USt-VA XML in the Mein-ELSTER UPLOAD format: the
+ * <Anmeldungssteuern> data block (NOT the ERiC transfer envelope, which needs a
+ * HerstellerID and encryption that require developer registration).
+ *
+ * Format basis (researched against the ELSTER Mein-ELSTER upload help and forum):
+ * - root <Anmeldungssteuern> with the year-specific finkonsens.de namespace and
+ *   `version` attribute; encoding ISO-8859-15.
+ * - the imported subtree is /Anmeldungssteuern/Steuerfall.
+ * - base Kennzahlen (Bemessungsgrundlagen, e.g. Kz81/Kz86) are whole euros; tax
+ *   Kennzahlen (e.g. Kz66 input VAT, Kz83 payable) carry two decimals.
+ * - empty Kennzahlen are omitted; the payable (Kz83) is always emitted so a
+ *   Nullmeldung is well-formed.
+ *
+ * VERIFY before relying on a submission: the exact mandatory <Unternehmer> /
+ * <DatenLieferant> child elements are defined only in the official XSD (developer
+ * portal) and are kept minimal here. Validate the file by uploading it to Mein
+ * ELSTER (which reports schema errors precisely) or against the official
+ * Steuerdatenschema for the tax year.
+ */
+export function buildUstvaXml(args: BuildUstvaArgs): string {
+  const ns = ustvaNamespace(args.year);
+
+  const kzLines = USTVA_KENNZAHLEN.map((k) => {
+    const value = args.kennzahlen[k.kennziffer] ?? 0;
+    // Emit non-zero Kennzahlen; always emit the payable (Kz83) for a Nullmeldung.
+    if (value === 0 && k.role !== 'payable') return null;
+    const formatted = k.role === 'base' ? String(Math.floor(value)) : value.toFixed(2);
+    return `      <Kz${k.kennziffer}>${formatted}</Kz${k.kennziffer}>`;
+  }).filter((line): line is string => line !== null);
+
   return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<!-- PLACEHOLDER USt-VA document — see TODO(xml) in shared.ts. NOT ELSTER-schema-valid. -->',
-    '<UStVA>',
-    `  <Steuernummer>${escapeXml(args.steuernummer ?? '')}</Steuernummer>`,
-    `  <Finanzamt>${escapeXml(args.finanzamt ?? '')}</Finanzamt>`,
-    `  <Zeitraum>${escapeXml(args.period)}</Zeitraum>`,
-    '  <Kennzahlen>',
-    kzLines,
-    '  </Kennzahlen>',
-    '</UStVA>',
+    '<?xml version="1.0" encoding="ISO-8859-15" standalone="no"?>',
+    `<Anmeldungssteuern xmlns="${ns}" version="${args.year}">`,
+    `  <Erstellungsdatum>${escapeXml(args.erstellungsdatum)}</Erstellungsdatum>`,
+    `  <DatenLieferant>${escapeXml(args.companyName)}</DatenLieferant>`,
+    '  <Steuerfall>',
+    '    <Unternehmer>',
+    `      <Bezeichnung>${escapeXml(args.companyName)}</Bezeichnung>`,
+    '    </Unternehmer>',
+    '    <Umsatzsteuervoranmeldung>',
+    `      <Jahr>${args.year}</Jahr>`,
+    `      <Zeitraum>${escapeXml(args.zeitraum)}</Zeitraum>`,
+    `      <Steuernummer>${escapeXml(args.steuernummer)}</Steuernummer>`,
+    ...kzLines,
+    '    </Umsatzsteuervoranmeldung>',
+    '  </Steuerfall>',
+    '</Anmeldungssteuern>',
     '',
   ].join('\n');
 }
@@ -198,4 +271,16 @@ function escapeXml(value: string): string {
 /** Encode a UTF-8 string as base64 for {@link FileOutput.fileBase64}. */
 export function toBase64(value: string): string {
   return Buffer.from(value, 'utf8').toString('base64');
+}
+
+/**
+ * Encode a string as ISO-8859-15 bytes, base64-encoded for {@link FileOutput.fileBase64}.
+ * Used for the USt-VA XML, whose declared encoding is ISO-8859-15.
+ *
+ * Node's 'latin1' is ISO-8859-1, which is byte-identical to ISO-8859-15 for every
+ * character this document emits (digits, ASCII markup, German umlauts). The few
+ * code points where -15 differs (e.g. the euro sign) are never written here.
+ */
+export function toBase64Latin1(value: string): string {
+  return Buffer.from(value, 'latin1').toString('base64');
 }

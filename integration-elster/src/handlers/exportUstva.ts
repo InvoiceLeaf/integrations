@@ -4,13 +4,15 @@ import {
   buildUstvaXml,
   computeUstvaKennzahlen,
   listDocumentsInWindow,
+  normalizeSteuernummer,
   parsePeriod,
-  toBase64,
+  toBase64Latin1,
+  todayYyyymmdd,
 } from './shared.js';
 
 /**
- * Build an ELSTER-ready USt-VA XML for a reporting period and return it as a
- * downloadable file for manual upload in Mein ELSTER.
+ * Build an ELSTER-ready USt-VA XML (Mein-ELSTER upload format) for a reporting
+ * period and return it as a downloadable file for manual upload in Mein ELSTER.
  */
 export const exportUstva: IntegrationHandler<
   ExportUstvaInput,
@@ -18,20 +20,23 @@ export const exportUstva: IntegrationHandler<
   ElsterIntegrationConfig
 > = async (input, context): Promise<FileOutput> => {
   const period = parsePeriod(input.period);
+  const steuernummer = normalizeSteuernummer(context.config.steuernummer);
+  const companyName = context.config.companyName?.trim() || 'InvoiceLeaf';
 
   const documents = await listDocumentsInWindow(context, period.startMs, period.endMs);
   const { kennzahlen } = computeUstvaKennzahlen(documents);
 
-  // TODO(xml): buildUstvaXml currently emits a placeholder, schema-invalid document.
   const xml = buildUstvaXml({
-    period: period.canonical,
-    steuernummer: context.config.steuernummer,
-    finanzamt: context.config.finanzamt,
+    year: period.year,
+    zeitraum: period.zeitraum,
+    steuernummer,
+    companyName,
+    erstellungsdatum: todayYyyymmdd(),
     kennzahlen,
   });
 
   return {
-    fileBase64: toBase64(xml),
+    fileBase64: toBase64Latin1(xml),
     filename: `ustva-${period.canonical}.xml`,
     mimeType: 'application/xml',
   };

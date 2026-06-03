@@ -31,8 +31,8 @@
     "properties": {
       "steuernummer": {
         "type": "string",
-        "title": "Steuernummer",
-        "description": "Your tax number as issued by the Finanzamt (Steuernummer)."
+        "title": "Steuernummer (13-digit)",
+        "description": "Your 13-digit bundeseinheitliche (federal) Steuernummer for ELSTER. Convert your regional Steuernummer with the official ELSTER converter if needed."
       },
       "finanzamt": {
         "type": "string",
@@ -51,6 +51,11 @@
           "Quarterly"
         ],
         "description": "Reporting frequency for the USt-Voranmeldung."
+      },
+      "companyName": {
+        "type": "string",
+        "title": "Company / Business Name",
+        "description": "Business name written into the generated ELSTER file (DatenLieferant / Unternehmer)."
       }
     },
     "required": [

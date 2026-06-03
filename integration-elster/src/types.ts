@@ -10,9 +10,12 @@ export type UstvaReportingPeriod = 'monthly' | 'quarterly';
  * Export-only: these values are used to populate the generated files.
  */
 export interface ElsterIntegrationConfig {
+  /** 13-digit bundeseinheitliche (federal) Steuernummer. */
   steuernummer?: string;
   finanzamt?: string;
   ustvaPeriod?: UstvaReportingPeriod;
+  /** Business / data-supplier name written into the generated ELSTER file. */
+  companyName?: string;
 }
 
 /** Shorthand for the typed context used across all ELSTER handlers. */
