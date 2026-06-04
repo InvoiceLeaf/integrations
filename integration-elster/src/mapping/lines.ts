@@ -7,39 +7,57 @@
  * touching handler logic.
  */
 
-/** VAT-rate bucket used to group taxable turnover. */
+/** VAT-rate bucket used to group taxable turnover (kept for the vatRateBucket helper). */
 export type VatRateBucket = 'standard' | 'reduced' | 'zero';
 
 /**
- * A single USt-VA Kennzahl.
- * - role "base": net taxable turnover for a rate bucket (Bemessungsgrundlage).
- * - role "tax": VAT amount.
- * - role "input": input VAT (Vorsteuer).
- * - role "payable": resulting Zahllast / Erstattung.
+ * A single USt-VA Kennzahl emitted into the XML.
+ * - format "euro": Bemessungsgrundlage, reported in whole euros.
+ * - format "decimal": tax / input-VAT / payable amount, two decimals.
  */
 export interface UstvaKennzahl {
-  /** Official Kennziffer (e.g. "81", "86", "66", "83"). */
+  /** Official Kennziffer (e.g. "81", "66", "83"). */
   kennziffer: string;
   /** Human-readable label. */
   label: string;
-  role: 'base' | 'tax' | 'input' | 'payable';
-  /** Rate bucket for base/tax roles. */
-  bucket?: VatRateBucket;
+  format: 'euro' | 'decimal';
+  /** Always emit even when zero (used for the payable Kz83 so a Nullmeldung is well-formed). */
+  alwaysEmit?: boolean;
 }
 
 /**
- * DEFAULT USt-VA Kennzahlen (subset covering the standard domestic cases).
+ * USt-VA Kennzahlen supported by the computation and builder.
  *
- * REVIEW REQUIRED: Kennziffern are the commonly used ones for domestic turnover at
- * 19% (Kz 81) and 7% (Kz 86), input VAT (Kz 66), and the computed payable (Kz 83).
- * Many other Kennzahlen exist (reverse charge, intra-EU, etc.) and are out of scope
- * for this scaffold.
+ * REVIEW REQUIRED: the Kennziffern follow the standard German USt-VA form, but a
+ * tax professional must confirm them — the §13b reverse-charge, intra-community,
+ * and import lines especially — against the current Steuerdatenschema before any
+ * filing. The computation in shared.ts decides which Kennzahl each transaction
+ * feeds based on the document's taxTreatment, accountingType, and VAT rate.
  */
 export const USTVA_KENNZAHLEN: UstvaKennzahl[] = [
-  { kennziffer: '81', label: 'Steuerpflichtige Umsätze 19% (Bemessungsgrundlage)', role: 'base', bucket: 'standard' },
-  { kennziffer: '86', label: 'Steuerpflichtige Umsätze 7% (Bemessungsgrundlage)', role: 'base', bucket: 'reduced' },
-  { kennziffer: '66', label: 'Vorsteuerbeträge (abziehbar)', role: 'input' },
-  { kennziffer: '83', label: 'Verbleibende Umsatzsteuer-Vorauszahlung / Überschuss', role: 'payable' },
+  // Output — steuerpflichtige Umsätze (we are the seller)
+  { kennziffer: '81', label: 'Steuerpflichtige Umsätze 19% (Bemessungsgrundlage)', format: 'euro' },
+  { kennziffer: '86', label: 'Steuerpflichtige Umsätze 7% (Bemessungsgrundlage)', format: 'euro' },
+  { kennziffer: '35', label: 'Steuerpflichtige Umsätze zu anderen Steuersätzen (Bemessungsgrundlage)', format: 'euro' },
+  { kennziffer: '36', label: 'Steuer zu anderen Steuersätzen', format: 'decimal' },
+  // Output — steuerfreie Umsätze
+  { kennziffer: '41', label: 'Innergemeinschaftliche Lieferungen (steuerfrei)', format: 'euro' },
+  { kennziffer: '43', label: 'Weitere steuerfreie Umsätze mit Vorsteuerabzug (z.B. Ausfuhr)', format: 'euro' },
+  { kennziffer: '48', label: 'Steuerfreie Umsätze ohne Vorsteuerabzug', format: 'euro' },
+  { kennziffer: '60', label: 'Steuerpflichtige Umsätze, für die der Leistungsempfänger die Steuer schuldet (§13b)', format: 'euro' },
+  // Innergemeinschaftliche Erwerbe (we are the buyer)
+  { kennziffer: '89', label: 'Innergemeinschaftliche Erwerbe 19% (Bemessungsgrundlage)', format: 'euro' },
+  { kennziffer: '93', label: 'Innergemeinschaftliche Erwerbe 7% (Bemessungsgrundlage)', format: 'euro' },
+  // §13b as recipient (we owe the tax)
+  { kennziffer: '46', label: 'Leistungen §13b, für die ich als Leistungsempfänger die Steuer schulde (Bemessungsgrundlage)', format: 'euro' },
+  { kennziffer: '47', label: 'Steuer auf §13b-Leistungen (Leistungsempfänger)', format: 'decimal' },
+  // Abziehbare Vorsteuerbeträge (input VAT)
+  { kennziffer: '66', label: 'Vorsteuerbeträge aus Rechnungen anderer Unternehmer', format: 'decimal' },
+  { kennziffer: '61', label: 'Vorsteuer aus innergemeinschaftlichen Erwerben', format: 'decimal' },
+  { kennziffer: '62', label: 'Entrichtete Einfuhrumsatzsteuer', format: 'decimal' },
+  { kennziffer: '67', label: 'Vorsteuer aus §13b-Leistungen (Leistungsempfänger)', format: 'decimal' },
+  // Result
+  { kennziffer: '83', label: 'Verbleibende Umsatzsteuer-Vorauszahlung / Überschuss', format: 'decimal', alwaysEmit: true },
 ];
 
 /**

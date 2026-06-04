@@ -27,5 +27,7 @@ export type {
   ExportEuerInput,
   PreviewUstvaInput,
   PreviewUstvaResult,
+  UstvaReviewItem,
+  UstvaComputation,
   FileOutput,
 } from './types.js';

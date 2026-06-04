@@ -4,8 +4,9 @@
  */
 
 import type { Document } from '@invoiceleaf/integration-sdk';
-import type { ElsterContext } from '../types.js';
-import { USTVA_KENNZAHLEN, vatRateBucket } from '../mapping/index.js';
+import type { ElsterContext, UstvaComputation } from '../types.js';
+import { USTVA_KENNZAHLEN } from '../mapping/index.js';
+import { base64, latin1Bytes } from '../encoding.js';
 
 /** Page size used when listing documents for a period/year. */
 const LIST_PAGE_SIZE = 100;
@@ -93,60 +94,170 @@ export async function listDocumentsInWindow(
 }
 
 /**
- * Compute USt-VA Kennzahlen from a set of documents (stub aggregation).
+ * Compute USt-VA Kennzahlen from a set of documents.
  *
- * REVIEW REQUIRED: this is a simplistic sum over document tax items by rate
- * bucket. It does NOT distinguish output vs input VAT by document direction
- * correctly beyond `accountingType`, ignores reverse-charge / intra-EU, and does
- * not handle credit notes' sign conventions. A tax-reviewed implementation must
- * replace this.
+ * Each tax line item is routed to the correct Kennzahl using the document's
+ * `taxTreatment` (TaxTreatment enum), `accountingType` (sale vs purchase) and VAT
+ * rate. Output VAT (incl. self-assessed intra-community acquisitions and §13b
+ * reverse charge) minus deductible input VAT yields the payable (Kz83). Credit
+ * notes / cancellations flip the sign.
+ *
+ * Items that cannot be mapped confidently (unknown treatment/direction, margin
+ * scheme, triangular, missing tax breakdown, non-standard acquisition rate) are
+ * collected in `review` instead of being silently mis-bucketed.
+ *
+ * REVIEW REQUIRED: these assignments implement the standard German USt-VA cases
+ * but are not a substitute for a Steuerberater's sign-off. Validate the figures
+ * and especially the §13b / intra-community / import handling before filing.
  */
-export function computeUstvaKennzahlen(documents: Document[]): {
-  kennzahlen: Record<string, number>;
-  payable: number;
-  documentCount: number;
-} {
+export function computeUstvaKennzahlen(documents: Document[]): UstvaComputation {
   const kennzahlen: Record<string, number> = {};
-  for (const k of USTVA_KENNZAHLEN) {
-    kennzahlen[k.kennziffer] = 0;
-  }
+  for (const k of USTVA_KENNZAHLEN) kennzahlen[k.kennziffer] = 0;
 
-  let outputTax = 0;
-  let inputTax = 0;
+  let outputVat = 0; // total VAT we owe (incl. self-assessed reverse charge / acquisitions)
+  let inputVat = 0; // total deductible Vorsteuer
+
+  const reviewMap = new Map<string, { count: number; net: number }>();
+  const flag = (reason: string, net: number): void => {
+    const cur = reviewMap.get(reason) ?? { count: 0, net: 0 };
+    cur.count += 1;
+    cur.net = round2(cur.net + net);
+    reviewMap.set(reason, cur);
+  };
+  const add = (kz: string, amount: number): void => {
+    kennzahlen[kz] = round2((kennzahlen[kz] ?? 0) + amount);
+  };
+
+  let documentCount = 0;
 
   for (const doc of documents) {
     if (doc.deleted || doc.duplicateOfId) continue;
-    const isIncome = doc.accountingType === 'RECEIVABLE';
-    const isExpense = doc.accountingType === 'PAYABLE';
+    documentCount += 1;
 
-    for (const item of doc.taxItems ?? []) {
-      const net = item.netAmount ?? 0;
-      const tax = item.taxAmount ?? 0;
-      const bucket = vatRateBucket(item.taxPercentage);
+    // Credit notes / cancellations reverse the sign of the reported amounts.
+    // ASSUMES amounts are stored as positive magnitudes; verify against the data.
+    const sign = doc.legalKind === 'CREDIT_NOTE' || doc.legalKind === 'CANCELLATION' ? -1 : 1;
+    const treatment = (doc.taxTreatment ?? 'UNKNOWN').toUpperCase();
+    const side = doc.accountingType; // 'RECEIVABLE' (sale) | 'PAYABLE' (purchase) | 'UNKNOWN'
 
-      if (isIncome) {
-        // Net base goes to the rate-bucket base Kennziffer.
-        const baseKz = USTVA_KENNZAHLEN.find((k) => k.role === 'base' && k.bucket === bucket);
-        if (baseKz) {
-          kennzahlen[baseKz.kennziffer] = round2((kennzahlen[baseKz.kennziffer] ?? 0) + net);
+    const items = doc.taxItems ?? [];
+    if (items.length === 0) {
+      flag('Document without a tax breakdown (no taxItems)', (doc.netAmount ?? 0) * sign);
+      continue;
+    }
+
+    for (const item of items) {
+      const net = round2((item.netAmount ?? 0) * sign);
+      const rate = Math.round(item.taxPercentage ?? 0);
+      const tax = round2((item.taxAmount ?? item.totalTax ?? (net * rate) / 100) * sign);
+
+      if (side === 'RECEIVABLE') {
+        // Seller / output side.
+        switch (treatment) {
+          case 'DOMESTIC_TAXABLE':
+            if (rate === 19) {
+              add('81', net);
+              outputVat = round2(outputVat + net * 0.19);
+            } else if (rate === 7) {
+              add('86', net);
+              outputVat = round2(outputVat + net * 0.07);
+            } else if (rate === 0) {
+              flag('Domestic sale flagged taxable but at 0% rate', net);
+            } else {
+              add('35', net);
+              add('36', tax);
+              outputVat = round2(outputVat + tax);
+            }
+            break;
+          case 'EU_INTRA_COMMUNITY':
+            add('41', net); // steuerfreie innergemeinschaftliche Lieferung
+            break;
+          case 'EXPORT':
+            add('43', net); // steuerfreie Ausfuhr
+            break;
+          case 'DOMESTIC_EXEMPT':
+            add('48', net); // steuerfrei ohne Vorsteuerabzug
+            break;
+          case 'EU_REVERSE_CHARGE':
+            add('60', net); // Leistungsempfänger schuldet die Steuer
+            break;
+          case 'SMALL_BUSINESS_EXEMPT':
+            flag('Kleinunternehmer sale (§19) — not reported in USt-VA', net);
+            break;
+          case 'MARGIN_SCHEME':
+            flag('Margin-scheme sale (§25/§25a) — requires special handling, not mapped', net);
+            break;
+          case 'TRIANGULAR':
+            flag('Triangular transaction — requires special handling, not mapped', net);
+            break;
+          default:
+            flag(`Sale with undetermined tax treatment (${treatment})`, net);
         }
-        outputTax = round2(outputTax + tax);
-      } else if (isExpense) {
-        inputTax = round2(inputTax + tax);
+      } else if (side === 'PAYABLE') {
+        // Buyer / input / self-assessment side.
+        switch (treatment) {
+          case 'DOMESTIC_TAXABLE':
+            if (tax !== 0) {
+              add('66', tax);
+              inputVat = round2(inputVat + tax);
+            }
+            break;
+          case 'EU_INTRA_COMMUNITY': {
+            // Intra-community acquisition: self-assess output VAT, deduct the same as input.
+            let acqVat = 0;
+            if (rate === 19) {
+              add('89', net);
+              acqVat = round2(net * 0.19);
+            } else if (rate === 7) {
+              add('93', net);
+              acqVat = round2(net * 0.07);
+            } else {
+              flag('Intra-community acquisition at a non-standard rate, not mapped', net);
+              break;
+            }
+            outputVat = round2(outputVat + acqVat);
+            add('61', acqVat);
+            inputVat = round2(inputVat + acqVat);
+            break;
+          }
+          case 'EU_REVERSE_CHARGE': {
+            // §13b recipient: self-assess output VAT, deduct the same as input.
+            const rcVat = tax !== 0 ? tax : round2((net * rate) / 100);
+            add('46', net);
+            add('47', rcVat);
+            outputVat = round2(outputVat + rcVat);
+            add('67', rcVat);
+            inputVat = round2(inputVat + rcVat);
+            break;
+          }
+          case 'IMPORT':
+            if (tax !== 0) {
+              add('62', tax); // Entrichtete Einfuhrumsatzsteuer
+              inputVat = round2(inputVat + tax);
+            }
+            break;
+          case 'DOMESTIC_EXEMPT':
+          case 'EXPORT':
+          case 'SMALL_BUSINESS_EXEMPT':
+            break; // purchase without deductible VAT — nothing to report
+          case 'MARGIN_SCHEME':
+          case 'TRIANGULAR':
+            flag(`Purchase with ${treatment} treatment — requires special handling, not mapped`, net);
+            break;
+          default:
+            flag(`Purchase with undetermined tax treatment (${treatment})`, net);
+        }
+      } else {
+        flag('Document with UNKNOWN direction (sale vs purchase undetermined)', net);
       }
-      // TODO(direction): documents with accountingType UNKNOWN are skipped here.
     }
   }
 
-  // Kz 66 = abziehbare Vorsteuer.
-  const inputKz = USTVA_KENNZAHLEN.find((k) => k.role === 'input');
-  if (inputKz) kennzahlen[inputKz.kennziffer] = inputTax;
+  const payable = round2(outputVat - inputVat);
+  kennzahlen['83'] = payable;
 
-  const payable = round2(outputTax - inputTax);
-  const payableKz = USTVA_KENNZAHLEN.find((k) => k.role === 'payable');
-  if (payableKz) kennzahlen[payableKz.kennziffer] = payable;
-
-  return { kennzahlen, payable, documentCount: documents.length };
+  const review = [...reviewMap.entries()].map(([reason, v]) => ({ reason, count: v.count, net: v.net }));
+  return { kennzahlen, payable, documentCount, review };
 }
 
 function round2(value: number): number {
@@ -232,9 +343,10 @@ export function buildUstvaXml(args: BuildUstvaArgs): string {
 
   const kzLines = USTVA_KENNZAHLEN.map((k) => {
     const value = args.kennzahlen[k.kennziffer] ?? 0;
-    // Emit non-zero Kennzahlen; always emit the payable (Kz83) for a Nullmeldung.
-    if (value === 0 && k.role !== 'payable') return null;
-    const formatted = k.role === 'base' ? String(Math.floor(value)) : value.toFixed(2);
+    // Emit non-zero Kennzahlen; always emit those marked alwaysEmit (Kz83 / Nullmeldung).
+    if (value === 0 && !k.alwaysEmit) return null;
+    // Bemessungsgrundlagen are whole euros (cents dropped); tax/input fields keep 2 decimals.
+    const formatted = k.format === 'euro' ? String(Math.trunc(value)) : value.toFixed(2);
     return `      <Kz${k.kennziffer}>${formatted}</Kz${k.kennziffer}>`;
   }).filter((line): line is string => line !== null);
 
@@ -268,19 +380,26 @@ function escapeXml(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
-/** Encode a UTF-8 string as base64 for {@link FileOutput.fileBase64}. */
-export function toBase64(value: string): string {
-  return Buffer.from(value, 'utf8').toString('base64');
+/**
+ * Encode a string as ISO-8859-15 bytes, base64-encoded for {@link FileOutput.fileBase64}.
+ * Used for the USt-VA XML (declared encoding ISO-8859-15). Pure-JS (no Buffer) so the
+ * package depends only on what the isolate runtime provides.
+ */
+export function toBase64Latin1(value: string): string {
+  return base64(latin1Bytes(value));
 }
 
 /**
- * Encode a string as ISO-8859-15 bytes, base64-encoded for {@link FileOutput.fileBase64}.
- * Used for the USt-VA XML, whose declared encoding is ISO-8859-15.
- *
- * Node's 'latin1' is ISO-8859-1, which is byte-identical to ISO-8859-15 for every
- * character this document emits (digits, ASCII markup, German umlauts). The few
- * code points where -15 differs (e.g. the euro sign) are never written here.
+ * Extract a human-readable message from an unknown error. Inlined locally so the
+ * compiled package carries no @invoiceleaf/integration-sdk runtime import (the SDK
+ * is used for types only, matching how published integrations ship).
  */
-export function toBase64Latin1(value: string): string {
-  return Buffer.from(value, 'latin1').toString('base64');
+export function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
 }

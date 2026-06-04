@@ -16,9 +16,8 @@
  *   overrides (spec open decision #2) are NOT implemented yet — see TODO below.
  */
 
-import type { UstvaKennzahl, EuerLine, VatRateBucket } from './lines.js';
+import type { EuerLine, VatRateBucket } from './lines.js';
 export type { UstvaKennzahl, EuerLine, VatRateBucket } from './lines.js';
-import { USTVA_KENNZAHLEN, EUER_LINES } from './lines.js';
 export { USTVA_KENNZAHLEN, EUER_LINES } from './lines.js';
 
 /**
@@ -122,10 +121,4 @@ export function vatRateBucket(taxPercentage: number | undefined): VatRateBucket 
   if (rate === 19) return 'standard';
   if (rate === 7) return 'reduced';
   return 'zero';
-}
-
-/** Look up the USt-VA Kennziffer that carries the net base for a rate bucket. */
-export function ustvaBaseKennziffer(bucket: VatRateBucket): UstvaKennzahl['kennziffer'] | undefined {
-  const entry = USTVA_KENNZAHLEN.find((k) => k.role === 'base' && k.bucket === bucket);
-  return entry?.kennziffer;
 }

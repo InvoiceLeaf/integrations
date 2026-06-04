@@ -2,18 +2,18 @@ import type { IntegrationHandler } from '@invoiceleaf/integration-sdk';
 import type { Document } from '@invoiceleaf/integration-sdk';
 import type { ElsterIntegrationConfig, ExportEuerInput, FileOutput } from '../types.js';
 import { EUER_LINES, mapCategoryToEuerLine, type EuerLine } from '../mapping/index.js';
-import { listDocumentsInWindow, toBase64, yearWindow } from './shared.js';
+import { listDocumentsInWindow, yearWindow } from './shared.js';
+import { buildXlsx, type CellValue } from '../xlsx.js';
 
 /**
- * Aggregate a full tax year into the Anlage EUER line set and return an Excel
- * workbook as a downloadable file.
+ * Aggregate a full tax year into the Anlage EUER line set and return a real .xlsx
+ * workbook: a summary sheet (Betriebseinnahmen / Betriebsausgaben / Gewinn) and a
+ * traceable detail sheet (one row per document with its mapped EUER line).
  *
- * TODO(xlsx): this returns a PLACEHOLDER, NOT a real .xlsx (OOXML) workbook. A real
- *   implementation must build a multi-sheet workbook (summary EUER lines + a
- *   traceable transaction-detail sheet), e.g. via a host capability or a pure-TS
- *   OOXML writer, and set the proper xlsx bytes. The current output is a UTF-8
- *   text summary base64-encoded under an .xlsx filename so the flow is exercisable
- *   end to end, but it will NOT open as Excel.
+ * REVIEW REQUIRED: income vs expense is derived from `accountingType`; credit notes
+ * / cancellations flip the sign; amounts use net where available. Sign conventions
+ * for mixed-direction documents and AfA (a depreciation schedule, not a per-document
+ * expense) are NOT handled and need a tax-reviewed implementation.
  */
 export const exportEuer: IntegrationHandler<
   ExportEuerInput,
@@ -24,31 +24,40 @@ export const exportEuer: IntegrationHandler<
   const { startMs, endMs } = yearWindow(year);
 
   const documents = await listDocumentsInWindow(context, startMs, endMs);
-  const totals = aggregateEuerLines(documents);
+  const { totals, detail, skipped } = collectEuer(documents);
 
-  // TODO(xlsx): replace this text body with a real workbook builder.
-  const placeholder = renderEuerPlaceholder(year, totals, documents.length);
+  const summary = buildSummarySheet(year, totals, detail.length, skipped);
+  const detailSheet: CellValue[][] = [
+    ['Datum', 'Geschäftspartner', 'Kategorie', 'EÜR-Zeile', 'Netto'],
+    ...detail,
+  ];
+
+  const fileBase64 = buildXlsx([
+    { name: 'EUER', rows: summary },
+    { name: 'Belege', rows: detailSheet },
+  ]);
 
   return {
-    fileBase64: toBase64(placeholder),
+    fileBase64,
     filename: `euer-${year}.xlsx`,
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   };
 };
 
-/**
- * Sum each EUER line from the year's documents using the category mapping.
- *
- * REVIEW REQUIRED: income vs expense is derived from `accountingType`; amounts use
- * net where available. Sign conventions for credit notes, mixed-direction
- * documents, and AfA (which is not a per-document expense but a schedule) are NOT
- * handled — AfA in particular cannot be derived from invoice documents alone.
- */
-export function aggregateEuerLines(documents: Document[]): Map<EuerLine['id'], number> {
+interface EuerData {
+  totals: Map<EuerLine['id'], number>;
+  /** Detail rows: [date, partner, category, lineLabel, net]. */
+  detail: CellValue[][];
+  /** Documents skipped because direction (sale/purchase) was undetermined. */
+  skipped: number;
+}
+
+function collectEuer(documents: Document[]): EuerData {
   const totals = new Map<EuerLine['id'], number>();
-  for (const line of EUER_LINES) {
-    totals.set(line.id, 0);
-  }
+  for (const line of EUER_LINES) totals.set(line.id, 0);
+
+  const detail: CellValue[][] = [];
+  let skipped = 0;
 
   for (const doc of documents) {
     if (doc.deleted || doc.duplicateOfId) continue;
@@ -58,49 +67,64 @@ export function aggregateEuerLines(documents: Document[]): Map<EuerLine['id'], n
         : doc.accountingType === 'PAYABLE'
           ? 'expense'
           : undefined;
-    if (!side) continue; // TODO(direction): UNKNOWN-direction documents are skipped.
+    if (!side) {
+      skipped += 1;
+      continue;
+    }
 
-    const amount = doc.netAmount ?? doc.subtotalAmount ?? doc.totalAmount ?? 0;
+    const sign = doc.legalKind === 'CREDIT_NOTE' || doc.legalKind === 'CANCELLATION' ? -1 : 1;
+    const amount = round2((doc.netAmount ?? doc.subtotalAmount ?? doc.totalAmount ?? 0) * sign);
     const lineId = mapCategoryToEuerLine(doc.category?.name, side);
     totals.set(lineId, round2((totals.get(lineId) ?? 0) + amount));
+
+    const partner = side === 'income' ? doc.receiver?.name : doc.supplier?.name;
+    const lineLabel = EUER_LINES.find((l) => l.id === lineId)?.label ?? lineId;
+    detail.push([
+      doc.invoiceDate ?? '',
+      partner ?? doc.description ?? '',
+      doc.category?.name ?? '',
+      lineLabel,
+      amount,
+    ]);
   }
 
-  return totals;
+  return { totals, detail, skipped };
 }
 
-function renderEuerPlaceholder(
+function buildSummarySheet(
   year: number,
   totals: Map<EuerLine['id'], number>,
-  documentCount: number
-): string {
-  const lines: string[] = [];
-  lines.push(`Anlage EUER ${year} (PLACEHOLDER — not a real .xlsx; see TODO(xlsx))`);
-  lines.push(`Documents aggregated: ${documentCount}`);
-  lines.push('');
-  lines.push('Betriebseinnahmen:');
+  documentCount: number,
+  skipped: number
+): CellValue[][] {
+  const rows: CellValue[][] = [];
+  rows.push([`Anlage EÜR ${year}`]);
+  rows.push([`Belege berücksichtigt: ${documentCount}`]);
+  if (skipped > 0) rows.push([`Ohne Richtung (nicht zugeordnet): ${skipped}`]);
+  rows.push([]);
+
+  rows.push(['Betriebseinnahmen']);
+  let incomeTotal = 0;
   for (const line of EUER_LINES.filter((l) => l.side === 'income')) {
-    lines.push(`  ${line.label}: ${(totals.get(line.id) ?? 0).toFixed(2)}`);
+    const value = round2(totals.get(line.id) ?? 0);
+    incomeTotal = round2(incomeTotal + value);
+    rows.push([line.label, value]);
   }
-  lines.push('');
-  lines.push('Betriebsausgaben:');
+  rows.push(['Summe Betriebseinnahmen', incomeTotal]);
+  rows.push([]);
+
+  rows.push(['Betriebsausgaben']);
+  let expenseTotal = 0;
   for (const line of EUER_LINES.filter((l) => l.side === 'expense')) {
-    lines.push(`  ${line.label}: ${(totals.get(line.id) ?? 0).toFixed(2)}`);
+    const value = round2(totals.get(line.id) ?? 0);
+    expenseTotal = round2(expenseTotal + value);
+    rows.push([line.label, value]);
   }
-  lines.push('');
+  rows.push(['Summe Betriebsausgaben', expenseTotal]);
+  rows.push([]);
 
-  const income = sumSide(totals, 'income');
-  const expense = sumSide(totals, 'expense');
-  lines.push(`Gewinn / Verlust (Einnahmen - Ausgaben): ${(income - expense).toFixed(2)}`);
-  lines.push('');
-  return lines.join('\n');
-}
-
-function sumSide(totals: Map<EuerLine['id'], number>, side: 'income' | 'expense'): number {
-  let sum = 0;
-  for (const line of EUER_LINES.filter((l) => l.side === side)) {
-    sum = round2(sum + (totals.get(line.id) ?? 0));
-  }
-  return sum;
+  rows.push(['Gewinn / Verlust', round2(incomeTotal - expenseTotal)]);
+  return rows;
 }
 
 function round2(value: number): number {

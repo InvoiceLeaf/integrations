@@ -53,6 +53,32 @@ export interface FileOutput {
   mimeType: string;
 }
 
+/**
+ * A bucket of transactions the computation could not confidently map to a
+ * Kennzahl (or that need attention). Surfaced so gaps are visible rather than
+ * silently producing wrong figures.
+ */
+export interface UstvaReviewItem {
+  /** Why these amounts were not mapped / need review. */
+  reason: string;
+  /** Number of tax line items affected. */
+  count: number;
+  /** Total net amount affected (signed). */
+  net: number;
+}
+
+/** Result of the USt-VA Kennzahlen computation. */
+export interface UstvaComputation {
+  /** Kennzahlen keyed by Kennziffer (e.g. "81", "66", "83"). */
+  kennzahlen: Record<string, number>;
+  /** Kz83: verbleibende Vorauszahlung (positive) / Überschuss (negative). */
+  payable: number;
+  /** Number of documents included. */
+  documentCount: number;
+  /** Unmapped / review-required buckets. */
+  review: UstvaReviewItem[];
+}
+
 export interface PreviewUstvaResult {
   success: boolean;
   period: string;
@@ -61,6 +87,8 @@ export interface PreviewUstvaResult {
   /** Computed Zahllast / Erstattung (positive = payable, negative = refund). */
   payable: number;
   documentCount: number;
+  /** Buckets that could not be mapped confidently — review before filing. */
+  review?: UstvaReviewItem[];
   message?: string;
   error?: string;
 }
