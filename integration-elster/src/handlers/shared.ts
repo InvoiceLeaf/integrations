@@ -381,6 +381,35 @@ function escapeXml(value: string): string {
 }
 
 /**
+ * Build the USt-VA `<Anmeldungssteuern>` XML for a reporting period: parse the
+ * period, aggregate documents in the window, compute the Kennzahlen, and render the
+ * XML. Shared by the export (download), validate, and submit handlers so the figures
+ * and the XML are produced identically.
+ */
+export async function buildUstva(
+  context: ElsterContext,
+  periodString: string
+): Promise<{ period: ParsedPeriod; xml: string; computation: UstvaComputation }> {
+  const period = parsePeriod(periodString);
+  const steuernummer = normalizeSteuernummer(context.config.steuernummer);
+  const companyName = context.config.companyName?.trim() || 'InvoiceLeaf';
+
+  const documents = await listDocumentsInWindow(context, period.startMs, period.endMs);
+  const computation = computeUstvaKennzahlen(documents);
+
+  const xml = buildUstvaXml({
+    year: period.year,
+    zeitraum: period.zeitraum,
+    steuernummer,
+    companyName,
+    erstellungsdatum: todayYyyymmdd(),
+    kennzahlen: computation.kennzahlen,
+  });
+
+  return { period, xml, computation };
+}
+
+/**
  * Encode a string as ISO-8859-15 bytes, base64-encoded for {@link FileOutput.fileBase64}.
  * Used for the USt-VA XML (declared encoding ISO-8859-15). Pure-JS (no Buffer) so the
  * package depends only on what the isolate runtime provides.

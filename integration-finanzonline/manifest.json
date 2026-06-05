@@ -1,0 +1,234 @@
+{
+  "id": "integration-finanzonline",
+  "name": "FinanzOnline / Austrian Tax",
+  "description": "Generate FinanzOnline-ready U30 (USt-Voranmeldung) and ZM (Zusammenfassende Meldung) XML files for manual upload in FinanzOnline.",
+  "version": "0.1.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "file-text",
+  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-finanzonline/icon.svg",
+  "category": "accounting",
+  "verified": true,
+  "tags": [
+    "finanzonline",
+    "fon",
+    "tax",
+    "austria",
+    "umsatzsteuer",
+    "u30",
+    "uva",
+    "zm",
+    "bmf"
+  ],
+  "dataAccess": [
+    "documents",
+    "companies",
+    "categories",
+    "tags"
+  ],
+  "externalAuth": [
+    {
+      "provider": "finanzonline",
+      "name": "FinanzOnline Webservice",
+      "type": "api_key",
+      "apiKey": {
+        "instructions": "Enter your FinanzOnline Webservice user credentials (FinanzOnline: Admin > Benutzerverwaltung > Webservice user). Stored encrypted and used only for direct submission to FinanzOnline. The Hersteller-ID defaults to your company UID (set in the integration settings).",
+        "fields": [
+          {
+            "key": "tid",
+            "label": "Teilnehmer-ID (TID)",
+            "secret": false,
+            "required": true,
+            "placeholder": "e.g. 1000103u3032"
+          },
+          {
+            "key": "benid",
+            "label": "Benutzer-ID (BENID)",
+            "secret": false,
+            "required": true
+          },
+          {
+            "key": "pin",
+            "label": "PIN",
+            "secret": true,
+            "required": true
+          },
+          {
+            "key": "herstellerid",
+            "label": "Hersteller-ID (optional)",
+            "secret": false,
+            "required": false,
+            "placeholder": "defaults to your company UID",
+            "description": "Leave blank to use your company UID (ATU) as the Hersteller-ID. Only set this if BMF issued you a different Hersteller-ID."
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "steuernummer": {
+        "type": "string",
+        "title": "Steuernummer (FASTNR, 9-digit)",
+        "description": "Your 9-digit Austrian Finanzamts- und Steuernummer (FASTNR)."
+      },
+      "uid": {
+        "type": "string",
+        "title": "UID (ATU)",
+        "description": "Austrian VAT identification number in ATU + 8-digit form (e.g. ATU12345678). Also used as the FinanzOnline Hersteller-ID when submitting, unless overridden in the connection."
+      },
+      "finanzamt": {
+        "type": "string",
+        "title": "Finanzamt / Dienststelle",
+        "description": "Optional. FinanzOnline usually derives the Finanzamt from the FASTNR."
+      },
+      "periodFrequency": {
+        "type": "string",
+        "title": "Voranmeldungszeitraum",
+        "enum": [
+          "monthly",
+          "quarterly"
+        ],
+        "enumNames": [
+          "Monthly",
+          "Quarterly"
+        ],
+        "description": "Reporting frequency for the U30 / ZM."
+      },
+      "companyName": {
+        "type": "string",
+        "title": "Company / Business Name",
+        "description": "Business name written into the generated file (KUNDENINFO)."
+      }
+    },
+    "required": [
+      "steuernummer",
+      "periodFrequency"
+    ]
+  },
+  "exports": [
+    {
+      "id": "u30-xml",
+      "name": "U30 USt-Voranmeldung (FinanzOnline)",
+      "description": "Build a FinanzOnline-ready U30 XML for a single reporting period, ready to upload yourself in FinanzOnline.",
+      "format": "custom",
+      "extension": "xml",
+      "mimeType": "application/xml",
+      "handler": "exportU30",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
+          }
+        },
+        "required": [
+          "period"
+        ]
+      }
+    },
+    {
+      "id": "zm-xml",
+      "name": "ZM Zusammenfassende Meldung (FinanzOnline)",
+      "description": "Build a FinanzOnline-ready ZM (U13) XML for a period: one line per customer EU-VAT-ID with summed intra-EU B2B net turnover.",
+      "format": "custom",
+      "extension": "xml",
+      "mimeType": "application/xml",
+      "handler": "exportZm",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
+          }
+        },
+        "required": [
+          "period"
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "preview-u30",
+      "name": "Preview U30 figures",
+      "description": "Compute the U30 Kennzahlen for a period and return them as JSON for review, including a list of unmapped documents that need attention. Read-only; AI-callable.",
+      "handler": "previewU30",
+      "icon": "eye",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
+          }
+        },
+        "required": [
+          "period"
+        ]
+      }
+    },
+    {
+      "id": "submit-u30",
+      "name": "Submit U30 to FinanzOnline",
+      "description": "Build the U30 (USt-Voranmeldung) for a period and submit it to FinanzOnline via the webservice using the connected credentials. Defaults to a non-binding TEST transmission; set production=true to file for real.",
+      "handler": "submitU30",
+      "icon": "upload",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
+          },
+          "production": {
+            "type": "boolean",
+            "title": "File for real (production)",
+            "description": "When false (default), sends a non-binding test transmission. When true, files the U30 with FinanzOnline.",
+            "default": false
+          }
+        },
+        "required": [
+          "period"
+        ]
+      }
+    },
+    {
+      "id": "submit-zm",
+      "name": "Submit ZM to FinanzOnline",
+      "description": "Build the ZM (Zusammenfassende Meldung) for a period and submit it to FinanzOnline via the webservice using the connected credentials. Defaults to a non-binding TEST transmission; set production=true to file for real.",
+      "handler": "submitZm",
+      "icon": "upload",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
+          },
+          "production": {
+            "type": "boolean",
+            "title": "File for real (production)",
+            "description": "When false (default), sends a non-binding test transmission. When true, files the ZM with FinanzOnline.",
+            "default": false
+          }
+        },
+        "required": [
+          "period"
+        ]
+      }
+    }
+  ]
+}

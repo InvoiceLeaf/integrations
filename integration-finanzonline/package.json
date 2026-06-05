@@ -1,0 +1,44 @@
+{
+  "name": "@invoiceleaf/integration-finanzonline",
+  "version": "0.1.0",
+  "description": "FinanzOnline / Austrian Tax integration for InvoiceLeaf: generate FinanzOnline-ready U30 (USt-Voranmeldung) and ZM (Zusammenfassende Meldung) XML from invoice data.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && node build.mjs && tsc --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "invoiceleaf",
+    "integration",
+    "finanzonline",
+    "fon",
+    "tax",
+    "austria",
+    "umsatzsteuer",
+    "u30",
+    "zm"
+  ],
+  "author": "InvoiceLeaf <support@invoiceleaf.com>",
+  "license": "MIT",
+  "peerDependencies": {
+    "@invoiceleaf/integration-sdk": "^2.0.0"
+  },
+  "devDependencies": {
+    "@invoiceleaf/integration-sdk": "file:../../integration-sdk",
+    "esbuild": "^0.24.0",
+    "fon-api": "^0.1.1",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist",
+    "manifest.json",
+    "README.md"
+  ]
+}

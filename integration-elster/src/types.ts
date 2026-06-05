@@ -1,4 +1,4 @@
-import type { IntegrationContext } from '@invoiceleaf/integration-sdk';
+import type { FilingRecord, IntegrationContext } from '@invoiceleaf/integration-sdk';
 
 /**
  * Reporting frequency for the USt-Voranmeldung, set once at install time.
@@ -38,6 +38,25 @@ export interface ExportEuerInput {
 export interface PreviewUstvaInput {
   period: string;
 }
+
+export interface ValidateUstvaInput {
+  /** Reporting period: "YYYY-MM" (monthly) or "YYYY-Qn" (quarterly). */
+  period: string;
+}
+
+export interface SubmitUstvaInput {
+  /** Reporting period: "YYYY-MM" (monthly) or "YYYY-Qn" (quarterly). */
+  period: string;
+  /**
+   * When true, perform a REAL, irreversible submission to the Finanzamt. Defaults
+   * to a non-binding test transmission. The UI sets this only after explicit
+   * confirmation; this action is `internal` and not AI-callable.
+   */
+  production?: boolean;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export type FilingStatusInput = Record<string, never>;
 
 // ---------------------------------------------------------------------------
 // Handler results
@@ -89,6 +108,39 @@ export interface PreviewUstvaResult {
   documentCount: number;
   /** Buckets that could not be mapped confidently — review before filing. */
   review?: UstvaReviewItem[];
+  message?: string;
+  error?: string;
+}
+
+export interface ValidateUstvaResult {
+  success: boolean;
+  period: string;
+  /** True when ERiC reports no validation errors. */
+  ok: boolean;
+  /** ERiC validation messages when not ok. */
+  errors: string[];
+  message?: string;
+  error?: string;
+}
+
+export interface SubmitUstvaResult {
+  success: boolean;
+  period: string;
+  /** "test" or "production". */
+  mode: string;
+  /** Lifecycle state: SUBMITTED | ACCEPTED | REJECTED | ERROR. */
+  state?: string;
+  /** ELSTER transfer ticket on a successful submission. */
+  transferTicket?: string;
+  /** GCS reference to the stored receipt PDF, if any. */
+  receiptFileSource?: string;
+  message?: string;
+  error?: string;
+}
+
+export interface FilingStatusResult {
+  success: boolean;
+  filings: FilingRecord[];
   message?: string;
   error?: string;
 }
