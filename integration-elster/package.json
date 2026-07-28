@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-elster",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "ELSTER / German Tax integration for InvoiceLeaf: USt-VA and EUER export plus verified ERiC filing via host capability",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
