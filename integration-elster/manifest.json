@@ -2,7 +2,7 @@
   "id": "integration-elster",
   "name": "ELSTER / German Tax",
   "description": "Generate ELSTER USt-Voranmeldung (XML) and EUER (Excel) files, and file USt-VA directly to the Finanzamt via ERiC using your own ELSTER certificate.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -54,6 +54,7 @@
       }
     }
   ],
+  "triggers": [],
   "configSchema": {
     "type": "object",
     "properties": {
