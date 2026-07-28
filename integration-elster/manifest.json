@@ -210,8 +210,8 @@
     },
     {
       "id": "submit-ustva",
-      "name": "Submit USt-VA",
-      "description": "Sign and submit a USt-VA filing to the Finanzamt via ELSTER/ERiC. Irreversible in production mode. Internal: NOT AI-callable, reached only from the confirmation UI.",
+      "name": "File USt-VA",
+      "description": "Sign and file a USt-VA with the Finanzamt via ELSTER/ERiC. Irreversible. Internal: NOT AI-callable, reached only from the tax agent after an approval or from the confirmation UI. Requires an approval token; use validate-ustva for a non-binding dry run.",
       "handler": "submitUstva",
       "icon": "send",
       "internal": true,
@@ -223,14 +223,20 @@
             "title": "Period",
             "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
           },
-          "production": {
-            "type": "boolean",
-            "title": "Production send",
-            "description": "When true, perform a REAL, irreversible submission to the Finanzamt. Defaults to a non-binding test transmission."
+          "confirmToken": {
+            "type": "string",
+            "title": "Approval token",
+            "description": "Single-use token minted by InvoiceLeaf when the figures were approved."
+          },
+          "figuresHash": {
+            "type": "string",
+            "title": "Figures hash",
+            "description": "Hash of the approved figures, re-checked against the approval."
           }
         },
         "required": [
-          "period"
+          "period",
+          "confirmToken"
         ]
       }
     },

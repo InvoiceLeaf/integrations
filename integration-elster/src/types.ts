@@ -48,11 +48,13 @@ export interface SubmitUstvaInput {
   /** Reporting period: "YYYY-MM" (monthly) or "YYYY-Qn" (quarterly). */
   period: string;
   /**
-   * When true, perform a REAL, irreversible submission to the Finanzamt. Defaults
-   * to a non-binding test transmission. The UI sets this only after explicit
-   * confirmation; this action is `internal` and not AI-callable.
+   * Single-use approval token minted by InvoiceLeaf when the figures were approved.
+   * Required: this action always files for real, so the host rejects it without one.
+   * For a non-binding dry run, use `validate-ustva` instead.
    */
-  production?: boolean;
+  confirmToken: string;
+  /** Hash of the approved figures, re-checked host side against the approval. */
+  figuresHash?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

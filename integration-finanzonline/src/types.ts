@@ -48,15 +48,31 @@ export interface PreviewU30Input {
   period: string;
 }
 
+export interface PreviewZmInput {
+  period: string;
+}
+
+export interface ValidateInput {
+  period: string;
+}
+
+/**
+ * Input for the internal submit actions. A submit always files for real, so it always
+ * requires a confirmation token: the non-binding test transmission lives in the
+ * `validate-*` actions instead. The token is minted by the backend when a human (or a
+ * consented auto-file run) approved these exact figures.
+ */
 export interface SubmitU30Input {
   period: string;
-  /** When true, file for real (uebermittlung "P"). Defaults to a non-binding test ("T"). */
-  production?: boolean;
+  confirmToken: string;
+  /** Hash of the approved figures, re-checked host side against the approval. */
+  figuresHash?: string;
 }
 
 export interface SubmitZmInput {
   period: string;
-  production?: boolean;
+  confirmToken: string;
+  figuresHash?: string;
 }
 
 /**
@@ -158,6 +174,54 @@ export interface PreviewU30Result {
   documentCount: number;
   /** Buckets that could not be mapped confidently — review before filing. */
   review?: ReviewItem[];
+  message?: string;
+  error?: string;
+}
+
+/**
+ * Preview of the ZM lines for a period. Shares the shape of the U30 preview so the tax
+ * agent reads both the same way: `payable` is the summed reportable turnover, since a ZM
+ * reports supplies rather than a tax liability.
+ */
+export interface PreviewZmResult {
+  success: boolean;
+  period: string;
+  /** One line per customer UID, keyed "UID|KLAG". */
+  kennzahlen: Record<string, number>;
+  /** Total reportable intra-EU turnover for the period. */
+  payable: number;
+  documentCount: number;
+  entries?: ZmEntryComputed[];
+  review?: ReviewItem[];
+  message?: string;
+  error?: string;
+}
+
+/**
+ * Result of a non-binding validation. Uniform across jurisdictions, so the tax agent
+ * does not need to know whether validation ran through ERiC or a FinanzOnline test
+ * transmission.
+ */
+export interface ValidateResult {
+  success: boolean;
+  period: string;
+  /** Whether the authority accepted the transmission. */
+  ok: boolean;
+  errors: string[];
+  message?: string;
+  error?: string;
+}
+
+/** Result of a real, filed submission through the host filing bridge. */
+export interface FiledResult {
+  success: boolean;
+  period: string;
+  mode: 'production';
+  /** The persisted TaxFiling record id. */
+  filingId?: string;
+  /** BMF message reference id on an accepted submission. */
+  messageRefId?: string;
+  errors?: string[];
   message?: string;
   error?: string;
 }

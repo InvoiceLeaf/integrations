@@ -1,8 +1,8 @@
 {
   "id": "integration-finanzonline",
   "name": "FinanzOnline / Austrian Tax",
-  "description": "Generate FinanzOnline-ready U30 (USt-Voranmeldung) and ZM (Zusammenfassende Meldung) XML files for manual upload in FinanzOnline.",
-  "version": "0.1.0",
+  "description": "Generate FinanzOnline-ready U30 (USt-Voranmeldung) and ZM (Zusammenfassende Meldung) XML files, and file them directly to FinanzOnline with your webservice credentials.",
+  "version": "0.2.0",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -28,6 +28,9 @@
     "companies",
     "categories",
     "tags"
+  ],
+  "capabilities": [
+    "filing"
   ],
   "externalAuth": [
     {
@@ -179,11 +182,11 @@
       }
     },
     {
-      "id": "submit-u30",
-      "name": "Submit U30 to FinanzOnline",
-      "description": "Build the U30 (USt-Voranmeldung) for a period and submit it to FinanzOnline via the webservice using the connected credentials. Defaults to a non-binding TEST transmission; set production=true to file for real.",
-      "handler": "submitU30",
-      "icon": "upload",
+      "id": "preview-zm",
+      "name": "Preview ZM lines",
+      "description": "Compute the ZM lines for a period and return them as JSON for review, including a list of supplies that need attention. Read-only; AI-callable.",
+      "handler": "previewZm",
+      "icon": "eye",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -191,12 +194,6 @@
             "type": "string",
             "title": "Period",
             "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
-          },
-          "production": {
-            "type": "boolean",
-            "title": "File for real (production)",
-            "description": "When false (default), sends a non-binding test transmission. When true, files the U30 with FinanzOnline.",
-            "default": false
           }
         },
         "required": [
@@ -205,11 +202,52 @@
       }
     },
     {
-      "id": "submit-zm",
-      "name": "Submit ZM to FinanzOnline",
-      "description": "Build the ZM (Zusammenfassende Meldung) for a period and submit it to FinanzOnline via the webservice using the connected credentials. Defaults to a non-binding TEST transmission; set production=true to file for real.",
-      "handler": "submitZm",
+      "id": "validate-u30",
+      "name": "Validate U30",
+      "description": "Validate the U30 for a period by sending a non-binding TEST transmission to FinanzOnline. Nothing is filed. Read-only; AI-callable.",
+      "handler": "validateU30",
+      "icon": "check-circle",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
+          }
+        },
+        "required": [
+          "period"
+        ]
+      }
+    },
+    {
+      "id": "validate-zm",
+      "name": "Validate ZM",
+      "description": "Validate the ZM for a period by sending a non-binding TEST transmission to FinanzOnline. Nothing is filed. Read-only; AI-callable.",
+      "handler": "validateZm",
+      "icon": "check-circle",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
+          }
+        },
+        "required": [
+          "period"
+        ]
+      }
+    },
+    {
+      "id": "submit-u30",
+      "name": "File U30 with FinanzOnline",
+      "description": "File the U30 (USt-Voranmeldung) with FinanzOnline for real. Irreversible. Internal: NOT AI-callable, reached only from the tax agent after an approval or from the confirmation UI. Requires an approval token; use validate-u30 for a non-binding test.",
+      "handler": "submitU30",
       "icon": "upload",
+      "internal": true,
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -218,15 +256,52 @@
             "title": "Period",
             "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
           },
-          "production": {
-            "type": "boolean",
-            "title": "File for real (production)",
-            "description": "When false (default), sends a non-binding test transmission. When true, files the ZM with FinanzOnline.",
-            "default": false
+          "confirmToken": {
+            "type": "string",
+            "title": "Approval token",
+            "description": "Single-use token minted by InvoiceLeaf when the figures were approved."
+          },
+          "figuresHash": {
+            "type": "string",
+            "title": "Figures hash",
+            "description": "Hash of the approved figures, re-checked against the approval."
           }
         },
         "required": [
-          "period"
+          "period",
+          "confirmToken"
+        ]
+      }
+    },
+    {
+      "id": "submit-zm",
+      "name": "File ZM with FinanzOnline",
+      "description": "File the ZM (Zusammenfassende Meldung) with FinanzOnline for real. Irreversible. Internal: NOT AI-callable, reached only from the tax agent after an approval or from the confirmation UI. Requires an approval token; use validate-zm for a non-binding test.",
+      "handler": "submitZm",
+      "icon": "upload",
+      "internal": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Reporting period in YYYY-MM (monthly) or YYYY-Qn (quarterly) form."
+          },
+          "confirmToken": {
+            "type": "string",
+            "title": "Approval token",
+            "description": "Single-use token minted by InvoiceLeaf when the figures were approved."
+          },
+          "figuresHash": {
+            "type": "string",
+            "title": "Figures hash",
+            "description": "Hash of the approved figures, re-checked against the approval."
+          }
+        },
+        "required": [
+          "period",
+          "confirmToken"
         ]
       }
     }

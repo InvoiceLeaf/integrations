@@ -1,33 +1,36 @@
 import type { IntegrationHandler } from '@invoiceleaf/integration-sdk';
-import type { FinanzOnlineConfig, SubmitResult, SubmitU30Input } from '../types';
-import { buildU30Xml, getFonCredentials, parsePeriod, submitToFon, toErrorMessage } from './shared';
+import type { FinanzOnlineConfig, FiledResult, SubmitU30Input } from '../types';
+import { fileToFon } from './fileToFon';
+import { toErrorMessage } from './shared';
 
 /**
- * Build the U30 (USt-Voranmeldung) for a period and submit it to FinanzOnline via
- * the webservice, using the stored credentials. Defaults to a non-binding TEST
- * transmission; set `production: true` to file for real.
+ * File the U30 (USt-Voranmeldung) with FinanzOnline for real.
+ *
+ * This action is `internal: true` in the manifest, so it is NOT AI-callable; it is
+ * reached only from the tax agent after a recorded approval, or from the confirmation
+ * UI. It always files for real: the non-binding test transmission is `validate-u30`.
  */
 export const submitU30: IntegrationHandler<
   SubmitU30Input,
-  SubmitResult,
+  FiledResult,
   FinanzOnlineConfig
-> = async (input, context): Promise<SubmitResult> => {
-  const production = input.production === true;
+> = async (input, context): Promise<FiledResult> => {
   try {
-    const period = parsePeriod(input.period);
-    const creds = await getFonCredentials(context);
-    const xml = await buildU30Xml(context, period);
-    const result = await submitToFon(creds, 'U30', xml, production);
-    if (!result.success) {
-      context.logger.warn('U30 submission not accepted', { rc: result.rc, status: result.status });
-    }
-    return result;
+    return await fileToFon(context, {
+      art: 'U30',
+      formType: 'u30',
+      label: 'U30',
+      period: input.period,
+      confirmToken: input.confirmToken,
+      figuresHash: input.figuresHash,
+    });
   } catch (error) {
     const message = toErrorMessage(error);
-    context.logger.error('U30 submission failed', { error: message });
+    context.logger.error('U30 filing failed', { error: message });
     return {
       success: false,
-      mode: production ? 'production' : 'test',
+      period: input.period,
+      mode: 'production',
       message,
       error: message,
     };

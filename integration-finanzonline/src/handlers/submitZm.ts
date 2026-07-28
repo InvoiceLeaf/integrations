@@ -1,33 +1,36 @@
 import type { IntegrationHandler } from '@invoiceleaf/integration-sdk';
-import type { FinanzOnlineConfig, SubmitResult, SubmitZmInput } from '../types';
-import { buildZmXml, getFonCredentials, parsePeriod, submitToFon, toErrorMessage } from './shared';
+import type { FinanzOnlineConfig, FiledResult, SubmitZmInput } from '../types';
+import { fileToFon } from './fileToFon';
+import { toErrorMessage } from './shared';
 
 /**
- * Build the ZM (Zusammenfassende Meldung, art "U13") for a period and submit it to
- * FinanzOnline via the webservice, using the stored credentials. Defaults to a
- * non-binding TEST transmission; set `production: true` to file for real.
+ * File the ZM (Zusammenfassende Meldung, art "U13") with FinanzOnline for real.
+ *
+ * This action is `internal: true` in the manifest, so it is NOT AI-callable; it is
+ * reached only from the tax agent after a recorded approval, or from the confirmation
+ * UI. It always files for real: the non-binding test transmission is `validate-zm`.
  */
 export const submitZm: IntegrationHandler<
   SubmitZmInput,
-  SubmitResult,
+  FiledResult,
   FinanzOnlineConfig
-> = async (input, context): Promise<SubmitResult> => {
-  const production = input.production === true;
+> = async (input, context): Promise<FiledResult> => {
   try {
-    const period = parsePeriod(input.period);
-    const creds = await getFonCredentials(context);
-    const xml = await buildZmXml(context, period);
-    const result = await submitToFon(creds, 'U13', xml, production);
-    if (!result.success) {
-      context.logger.warn('ZM submission not accepted', { rc: result.rc, status: result.status });
-    }
-    return result;
+    return await fileToFon(context, {
+      art: 'U13',
+      formType: 'zm',
+      label: 'ZM',
+      period: input.period,
+      confirmToken: input.confirmToken,
+      figuresHash: input.figuresHash,
+    });
   } catch (error) {
     const message = toErrorMessage(error);
-    context.logger.error('ZM submission failed', { error: message });
+    context.logger.error('ZM filing failed', { error: message });
     return {
       success: false,
-      mode: production ? 'production' : 'test',
+      period: input.period,
+      mode: 'production',
       message,
       error: message,
     };
