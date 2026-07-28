@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-finanzonline",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "FinanzOnline / Austrian Tax integration for InvoiceLeaf: generate FinanzOnline-ready U30 (USt-Voranmeldung) and ZM (Zusammenfassende Meldung) XML from invoice data.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

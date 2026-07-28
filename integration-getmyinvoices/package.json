@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-getmyinvoices",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "GetMyInvoices integration for InvoiceLeaf two-way document synchronization",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

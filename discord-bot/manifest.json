@@ -2,14 +2,14 @@
   "id": "discord-bot",
   "name": "Discord Bot",
   "description": "Builds Discord notification payloads and callback action outputs for InvoiceLeaf.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
     "url": "https://invoiceleaf.com"
   },
   "icon": "discord",
-  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/discord-bot/icon.svg",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/discord.png",
   "category": "communication",
   "tags": ["discord", "notifications", "bot", "messaging"],
   "dataAccess": ["documents", "companies", "categories", "spaces", "exports"],

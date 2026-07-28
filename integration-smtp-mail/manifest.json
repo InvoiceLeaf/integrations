@@ -2,14 +2,14 @@
   "id": "integration-smtp-mail",
   "name": "SMTP Mail",
   "description": "Send email through SMTP and crawl IMAP inboxes for PDF attachments to import into InvoiceLeaf.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
     "url": "https://invoiceleaf.com"
   },
   "icon": "mail",
-  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-smtp-mail/icon.svg",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/smtp.png",
   "category": "communication",
   "tags": ["smtp", "imap", "email", "inbox", "attachments"],
   "dataAccess": ["documents"],

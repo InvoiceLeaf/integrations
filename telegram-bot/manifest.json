@@ -2,14 +2,14 @@
   "id": "telegram-bot",
   "name": "Telegram Bot",
   "description": "Builds Telegram notification payloads and callback action outputs for InvoiceLeaf.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
     "url": "https://invoiceleaf.com"
   },
   "icon": "telegram",
-  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/telegram-bot/icon.svg",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/telegram.png",
   "category": "communication",
   "tags": ["telegram", "notifications", "bot", "messaging"],
   "dataAccess": ["documents", "companies", "categories", "spaces", "exports"],

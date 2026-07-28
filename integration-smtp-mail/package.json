@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-smtp-mail",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "SMTP + IMAP integration for InvoiceLeaf: send emails and crawl PDF attachments for import",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

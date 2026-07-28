@@ -9,7 +9,7 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "book",
-  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-quickbooks/icon.svg",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/quickbooks.png",
   "category": "accounting",
   "tags": [
     "quickbooks",

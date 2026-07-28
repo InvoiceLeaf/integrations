@@ -2,14 +2,14 @@
   "id": "slack-notifications",
   "name": "Slack Notifications",
   "description": "Get real-time Slack notifications when invoices are uploaded, processed, or exported. Stay informed about your invoice activity without leaving Slack.",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
     "url": "https://invoiceleaf.com"
   },
   "icon": "slack",
-  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/slack-notifications/icon.svg",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/slack.png",
   "category": "communication",
   "tags": ["slack", "notifications", "alerts", "messaging", "real-time"],
   "dataAccess": ["documents", "companies", "categories"],

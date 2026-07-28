@@ -2,14 +2,14 @@
   "id": "integration-finanzonline",
   "name": "FinanzOnline / Austrian Tax",
   "description": "Generate FinanzOnline-ready U30 (USt-Voranmeldung) and ZM (Zusammenfassende Meldung) XML files, and file them directly to FinanzOnline with your webservice credentials.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
     "url": "https://invoiceleaf.com"
   },
   "icon": "file-text",
-  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-finanzonline/icon.svg",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/finanzonline.png",
   "category": "accounting",
   "verified": true,
   "tags": [

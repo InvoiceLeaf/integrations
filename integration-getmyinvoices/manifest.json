@@ -2,14 +2,14 @@
   "id": "integration-getmyinvoices",
   "name": "GetMyInvoices",
   "description": "Bi-directional InvoiceLeaf <-> GetMyInvoices document synchronization with scheduled and event-driven sync.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
     "url": "https://invoiceleaf.com"
   },
   "icon": "book",
-  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-getmyinvoices/icon.svg",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/getmyinvoices.png",
   "category": "accounting",
   "tags": [
     "getmyinvoices",

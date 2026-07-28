@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-telegram-bot",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Telegram bot integration payload builders for InvoiceLeaf",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

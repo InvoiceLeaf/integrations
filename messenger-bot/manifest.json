@@ -2,14 +2,14 @@
   "id": "messenger-bot",
   "name": "Messenger Bot",
   "description": "Builds Facebook Messenger notification payloads for InvoiceLeaf.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
     "url": "https://invoiceleaf.com"
   },
   "icon": "messenger",
-  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/messenger-bot/icon.svg",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/messenger.png",
   "category": "communication",
   "tags": ["messenger", "facebook", "notifications", "bot", "messaging"],
   "dataAccess": ["documents", "companies", "categories", "spaces", "exports"],
