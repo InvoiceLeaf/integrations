@@ -1,0 +1,202 @@
+{
+  "id": "integration-stripe",
+  "name": "Stripe",
+  "description": "Two-way Stripe sync: import Stripe invoices as fully structured documents, push InvoiceLeaf invoices to Stripe for payment collection, and record Stripe payments. Payments matched to synced invoices mark them as paid automatically.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "credit-card",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/stripe.png",
+  "category": "payment",
+  "tags": [
+    "stripe",
+    "payments",
+    "invoice-import",
+    "reconciliation"
+  ],
+  "dataAccess": [
+    "documents",
+    "companies",
+    "payments"
+  ],
+  "externalAuth": [
+    {
+      "provider": "stripe",
+      "name": "Stripe API Key",
+      "type": "api_key",
+      "apiKey": {
+        "headerName": "Authorization",
+        "prefix": "Bearer ",
+        "instructions": "Create a restricted API key in your Stripe dashboard (Developers > API keys) with read access to Invoices, Charges, and Customers, then paste it here."
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "pull-stripe-invoices",
+      "type": "schedule",
+      "name": "Import Stripe Invoices",
+      "description": "Imports finalized Stripe invoices into InvoiceLeaf as documents",
+      "schedule": "15 * * * *",
+      "handler": "pullInvoicesFromStripe",
+      "configurable": true
+    },
+    {
+      "id": "push-invoices-to-stripe",
+      "type": "schedule",
+      "name": "Push Invoices to Stripe",
+      "description": "Creates Stripe invoices from unpaid InvoiceLeaf receivable invoices so customers can pay them via Stripe",
+      "schedule": "5 * * * *",
+      "handler": "pushInvoicesToStripe",
+      "configurable": true
+    },
+    {
+      "id": "sync-stripe-payments",
+      "type": "schedule",
+      "name": "Sync Stripe Payments",
+      "description": "Records succeeded Stripe charges as payments and allocates them to synced invoices, marking them paid",
+      "schedule": "35 * * * *",
+      "handler": "syncStripePayments",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test Stripe Connection",
+      "description": "Verify the API key can read invoices and charges",
+      "handler": "testConnection",
+      "icon": "check"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "apiBaseUrl": {
+        "type": "string",
+        "title": "Stripe API Base URL",
+        "description": "Optional override. Defaults to https://api.stripe.com"
+      },
+      "initialSyncLookbackHours": {
+        "type": "number",
+        "title": "Initial Sync Lookback (hours)",
+        "description": "Used only until the first successful run checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "maxInvoicesPerRun": {
+        "type": "number",
+        "title": "Max Invoices Per Run",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 500
+      },
+      "maxChargesPerRun": {
+        "type": "number",
+        "title": "Max Charges Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "importDraftInvoices": {
+        "type": "boolean",
+        "title": "Import Draft Invoices",
+        "description": "When disabled, only finalized invoices (open, paid, uncollectible) are imported.",
+        "default": false
+      },
+      "importVoidInvoices": {
+        "type": "boolean",
+        "title": "Import Void Invoices",
+        "default": false
+      },
+      "recordUnmatchedCharges": {
+        "type": "boolean",
+        "title": "Record Unmatched Charges",
+        "description": "When enabled, succeeded charges that cannot be matched to an imported invoice are still recorded as unmatched payments for manual reconciliation.",
+        "default": true
+      },
+      "attachProviderPdf": {
+        "type": "boolean",
+        "title": "Attach Stripe PDF",
+        "description": "Store the Stripe invoice PDF as the document file on import (the document data itself comes from the Stripe API, not from the PDF).",
+        "default": true
+      },
+      "maxPushPerRun": {
+        "type": "number",
+        "title": "Max Invoices Pushed Per Run",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 500
+      },
+      "daysUntilDue": {
+        "type": "number",
+        "title": "Days Until Due",
+        "description": "Payment terms for pushed Stripe invoices when the document has no due date.",
+        "default": 30,
+        "minimum": 1,
+        "maximum": 365
+      },
+      "autoFinalizeInvoices": {
+        "type": "boolean",
+        "title": "Auto-Finalize Pushed Invoices",
+        "description": "Finalize pushed invoices so they are immediately payable. When disabled they stay as Stripe drafts.",
+        "default": true
+      },
+      "fallbackCustomerName": {
+        "type": "string",
+        "title": "Fallback Customer Name",
+        "default": "InvoiceLeaf Customer"
+      },
+      "includeDraftDocuments": {
+        "type": "boolean",
+        "title": "Push Draft Documents",
+        "default": false
+      }
+    }
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Stripe Connection",
+        "description": "API endpoint behavior",
+        "fields": [
+          "apiBaseUrl"
+        ]
+      },
+      {
+        "title": "Invoice Import",
+        "description": "Which Stripe invoices are imported",
+        "fields": [
+          "initialSyncLookbackHours",
+          "maxInvoicesPerRun",
+          "importDraftInvoices",
+          "importVoidInvoices",
+          "attachProviderPdf"
+        ]
+      },
+      {
+        "title": "Invoice Push",
+        "description": "How InvoiceLeaf invoices are pushed to Stripe",
+        "fields": [
+          "maxPushPerRun",
+          "daysUntilDue",
+          "autoFinalizeInvoices",
+          "fallbackCustomerName",
+          "includeDraftDocuments"
+        ]
+      },
+      {
+        "title": "Payment Sync",
+        "description": "How Stripe charges are recorded",
+        "fields": [
+          "maxChargesPerRun",
+          "recordUnmatchedCharges"
+        ]
+      }
+    ]
+  }
+}

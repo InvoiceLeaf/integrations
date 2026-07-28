@@ -1,0 +1,42 @@
+{
+  "name": "@invoiceleaf/integration-braintree",
+  "version": "1.0.0",
+  "description": "Braintree integration for InvoiceLeaf: record Braintree transactions as payments and allocate them to your invoices",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "invoiceleaf",
+    "integration",
+    "braintree",
+    "payments",
+    "reconciliation"
+  ],
+  "author": "InvoiceLeaf <support@invoiceleaf.com>",
+  "license": "MIT",
+  "peerDependencies": {
+    "@invoiceleaf/integration-sdk": "^2.1.0"
+  },
+  "devDependencies": {
+    "@invoiceleaf/integration-sdk": "file:../../integration-sdk",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist",
+    "manifest.json",
+    "README.md"
+  ]
+}

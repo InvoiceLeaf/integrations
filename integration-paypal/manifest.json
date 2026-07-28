@@ -1,0 +1,181 @@
+{
+  "id": "integration-paypal",
+  "name": "PayPal",
+  "description": "Two-way PayPal sync: import PayPal invoices as fully structured documents, push InvoiceLeaf invoices to PayPal for payment collection, and record PayPal payments. Payments matched to synced invoices mark them as paid automatically.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "credit-card",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/paypal.png",
+  "category": "payment",
+  "tags": [
+    "paypal",
+    "payments",
+    "invoice-import",
+    "reconciliation"
+  ],
+  "dataAccess": [
+    "documents",
+    "companies",
+    "payments"
+  ],
+  "externalAuth": [
+    {
+      "provider": "paypal",
+      "name": "PayPal Client Secret",
+      "type": "api_key",
+      "apiKey": {
+        "instructions": "Create a REST app in the PayPal Developer Dashboard (Apps & Credentials) and paste the app's Client Secret here. The Client ID and the environment (live or sandbox) are not secret and are entered in the integration settings."
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "pull-paypal-invoices",
+      "type": "schedule",
+      "name": "Import PayPal Invoices",
+      "description": "Imports invoices created in PayPal Invoicing into InvoiceLeaf as fully structured documents",
+      "schedule": "20 * * * *",
+      "handler": "pullInvoicesFromPaypal",
+      "configurable": true
+    },
+    {
+      "id": "sync-paypal-payments",
+      "type": "schedule",
+      "name": "Sync PayPal Payments",
+      "description": "Records PayPal invoice payments and successful transactions as payments and allocates them to synced invoices",
+      "schedule": "40 * * * *",
+      "handler": "syncPaypalPayments",
+      "configurable": true
+    },
+    {
+      "id": "push-invoices-to-paypal",
+      "type": "schedule",
+      "name": "Push Invoices to PayPal",
+      "description": "Creates PayPal invoices from unpaid InvoiceLeaf receivable invoices so customers can pay them via PayPal",
+      "schedule": "50 * * * *",
+      "handler": "pushInvoicesToPaypal",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test PayPal Connection",
+      "description": "Verify the REST app credentials can obtain an OAuth token and read invoices",
+      "handler": "testConnection",
+      "icon": "check"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "clientId": {
+        "type": "string",
+        "title": "PayPal Client ID",
+        "description": "The Client ID of your PayPal REST app. Required for the integration to work."
+      },
+      "environment": {
+        "type": "string",
+        "title": "Environment",
+        "description": "PayPal environment the REST app belongs to.",
+        "enum": ["live", "sandbox"],
+        "default": "live"
+      },
+      "initialSyncLookbackHours": {
+        "type": "number",
+        "title": "Initial Sync Lookback (hours)",
+        "description": "Used only until the first successful run checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "maxInvoicesPerRun": {
+        "type": "number",
+        "title": "Max Invoices Per Run",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 500
+      },
+      "maxTransactionsPerRun": {
+        "type": "number",
+        "title": "Max Transactions Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "importDraftInvoices": {
+        "type": "boolean",
+        "title": "Import Draft Invoices",
+        "description": "When disabled, draft invoices are skipped until they are sent.",
+        "default": false
+      },
+      "recordUnmatchedTransactions": {
+        "type": "boolean",
+        "title": "Record Unmatched Transactions",
+        "description": "When enabled, successful PayPal transactions that do not belong to a synced invoice are recorded as unmatched payments for manual reconciliation. Requires the Transaction Search feature to be enabled on the REST app.",
+        "default": true
+      },
+      "maxPushPerRun": {
+        "type": "number",
+        "title": "Max Invoices Pushed Per Run",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 500
+      },
+      "autoSendInvoices": {
+        "type": "boolean",
+        "title": "Auto-Send Pushed Invoices",
+        "description": "Send pushed invoices through PayPal immediately. This emails the invoice to the customer. When disabled, pushed invoices stay as PayPal drafts.",
+        "default": false
+      },
+      "includeDraftDocuments": {
+        "type": "boolean",
+        "title": "Push Draft Documents",
+        "default": false
+      }
+    },
+    "required": ["clientId"]
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "PayPal Connection",
+        "description": "REST app credentials and environment",
+        "fields": [
+          "clientId",
+          "environment"
+        ]
+      },
+      {
+        "title": "Invoice Import",
+        "description": "Which PayPal invoices are imported",
+        "fields": [
+          "maxInvoicesPerRun",
+          "importDraftInvoices"
+        ]
+      },
+      {
+        "title": "Invoice Push",
+        "description": "How InvoiceLeaf invoices are pushed to PayPal",
+        "fields": [
+          "maxPushPerRun",
+          "autoSendInvoices",
+          "includeDraftDocuments"
+        ]
+      },
+      {
+        "title": "Payment Sync",
+        "description": "How PayPal payments are recorded",
+        "fields": [
+          "initialSyncLookbackHours",
+          "maxTransactionsPerRun",
+          "recordUnmatchedTransactions"
+        ]
+      }
+    ]
+  }
+}

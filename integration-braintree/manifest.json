@@ -1,0 +1,137 @@
+{
+  "id": "integration-braintree",
+  "name": "Braintree",
+  "description": "Records Braintree transactions as InvoiceLeaf payments and allocates them to existing invoices matched by the transaction order ID. Braintree has no invoicing product, so no documents are imported.",
+  "version": "1.0.0",
+  "author": {
+    "name": "InvoiceLeaf",
+    "email": "support@invoiceleaf.com",
+    "url": "https://invoiceleaf.com"
+  },
+  "icon": "credit-card",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/braintree.png",
+  "category": "payment",
+  "tags": [
+    "braintree",
+    "payments",
+    "reconciliation"
+  ],
+  "dataAccess": [
+    "documents",
+    "companies",
+    "payments"
+  ],
+  "externalAuth": [
+    {
+      "provider": "braintree",
+      "name": "Braintree Private Key",
+      "type": "api_key",
+      "apiKey": {
+        "instructions": "In the Braintree control panel, go to Settings > API Keys and copy your Private Key, then paste it here. The merchant ID, public key, and environment are entered in the integration settings, not here."
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "sync-braintree-payments",
+      "type": "schedule",
+      "name": "Sync Braintree Payments",
+      "description": "Records settled Braintree transactions as payments and allocates them to invoices matched by order ID",
+      "schedule": "25 * * * *",
+      "handler": "syncBraintreePayments",
+      "configurable": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test-connection",
+      "name": "Test Braintree Connection",
+      "description": "Verify the API credentials can reach the Braintree GraphQL API and search transactions",
+      "handler": "testConnection",
+      "icon": "check"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "merchantId": {
+        "type": "string",
+        "title": "Merchant ID",
+        "description": "Your Braintree merchant ID (shown under Settings > Business in the control panel)."
+      },
+      "publicKey": {
+        "type": "string",
+        "title": "Public Key",
+        "description": "Your Braintree API public key (shown under Settings > API Keys in the control panel)."
+      },
+      "environment": {
+        "type": "string",
+        "title": "Environment",
+        "description": "Which Braintree environment the API keys belong to.",
+        "enum": ["production", "sandbox"],
+        "default": "production"
+      },
+      "initialSyncLookbackHours": {
+        "type": "number",
+        "title": "Initial Sync Lookback (hours)",
+        "description": "Used only until the first successful run checkpoint is stored.",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 720
+      },
+      "maxTransactionsPerRun": {
+        "type": "number",
+        "title": "Max Transactions Per Run",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "includeSubmittedForSettlement": {
+        "type": "boolean",
+        "title": "Include Submitted For Settlement",
+        "description": "Also record transactions not yet settled (status SUBMITTED_FOR_SETTLEMENT).",
+        "default": true
+      },
+      "matchByOrderId": {
+        "type": "boolean",
+        "title": "Match By Order ID",
+        "description": "When enabled, a transaction whose order ID equals the invoice number of exactly one InvoiceLeaf document is allocated to that document.",
+        "default": true
+      },
+      "recordUnmatchedTransactions": {
+        "type": "boolean",
+        "title": "Record Unmatched Transactions",
+        "description": "When enabled, transactions that cannot be matched to an invoice are still recorded as unmatched payments for manual reconciliation.",
+        "default": true
+      }
+    },
+    "required": [
+      "merchantId",
+      "publicKey"
+    ]
+  },
+  "ui": {
+    "configGroups": [
+      {
+        "title": "Braintree Connection",
+        "description": "Merchant identity and environment",
+        "fields": [
+          "merchantId",
+          "publicKey",
+          "environment"
+        ]
+      },
+      {
+        "title": "Payment Sync",
+        "description": "How Braintree transactions are recorded",
+        "fields": [
+          "initialSyncLookbackHours",
+          "maxTransactionsPerRun",
+          "includeSubmittedForSettlement",
+          "matchByOrderId",
+          "recordUnmatchedTransactions"
+        ]
+      }
+    ]
+  }
+}
