@@ -12,10 +12,10 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@invoiceleaf/integration-sdk": "^1.7.0"
+    "@invoiceleaf/integration-sdk": "^2.0.0"
   },
   "devDependencies": {
-    "@invoiceleaf/integration-sdk": "^1.7.0",
+    "@invoiceleaf/integration-sdk": "^2.1.0",
     "@types/node": "^22.10.0",
     "typescript": "^5.4.0"
   },

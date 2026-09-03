@@ -33,7 +33,14 @@ export function createMockContext(
       createExport: vi.fn().mockResolvedValue({ id: 'export-1', spaceId: 'space-1', format: 'csv', status: 'COMPLETED', createdAt: '' }),
       getExport: vi.fn().mockResolvedValue({ id: 'export-1', spaceId: 'space-1', format: 'csv', status: 'COMPLETED', createdAt: '' }),
       importDocument: vi.fn().mockResolvedValue({ documentId: 'imported-doc-1', duplicate: false }),
+      createStructuredDocument: vi.fn().mockResolvedValue({ documentId: 'structured-doc-1', duplicate: false }),
+      createCompany: vi.fn().mockResolvedValue({ companyId: 'company-1', name: 'Test Company' }),
       patchDocumentIntegrationMeta: vi.fn().mockResolvedValue(undefined),
+    },
+
+    payments: {
+      list: vi.fn().mockResolvedValue({ items: [], page: 1, limit: 20, hasMore: false }),
+      create: vi.fn().mockResolvedValue({ paymentId: 'payment-1', duplicate: false, status: 'MATCHED' }),
     },
 
     credentials: {

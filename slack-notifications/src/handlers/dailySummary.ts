@@ -43,6 +43,10 @@ export const handleDailySummary: IntegrationHandler<
     };
   }
 
+  if (!config.webhookUrl) {
+    return { success: false, error: 'Slack webhook URL is not configured.' };
+  }
+
   // Calculate yesterday's date range
   const now = new Date();
   const yesterday = new Date(now);

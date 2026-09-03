@@ -272,13 +272,6 @@ async function importOrUpdateInvoice(
     source: 'sevdesk',
     description: `Imported from sevDesk invoice ${trimToUndefined(invoice.invoiceNumber) ?? invoiceId}`,
     externalRef: `sevdesk:invoice:${invoiceId}`,
-    metadata: {
-      sevdeskInvoiceId: invoiceId,
-      invoiceNumber: trimToUndefined(invoice.invoiceNumber) ?? null,
-      sevdeskStatus: status ?? null,
-      sevdeskUpdatedAt: trimToUndefined(invoice.update) ?? null,
-      importedBy: 'integration-sevdesk',
-    },
   });
 
   await context.mappings.upsert({

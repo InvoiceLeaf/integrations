@@ -7,6 +7,7 @@ import type {
   StateClient,
   Logger,
   EmailClient,
+  PaymentsClient,
   Document,
   DocumentFileContent,
   ListResult,
@@ -50,6 +51,8 @@ export function createMockData(overrides: Partial<DataClient> = {}): DataClient 
     createExport: vi.fn(),
     getExport: vi.fn(),
     importDocument: vi.fn(),
+    createStructuredDocument: vi.fn().mockResolvedValue({ documentId: 'structured-doc-1', duplicate: false }),
+    createCompany: vi.fn().mockResolvedValue({ companyId: 'company-1', name: 'Test Company' }),
     patchDocumentIntegrationMeta: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -69,6 +72,14 @@ export function createMockState(overrides: Partial<StateClient> = {}): StateClie
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+export function createMockPayments(overrides: Partial<PaymentsClient> = {}): PaymentsClient {
+  return {
+    list: vi.fn().mockResolvedValue({ items: [], page: 1, limit: 20, hasMore: false }),
+    create: vi.fn().mockResolvedValue({ paymentId: 'payment-1', duplicate: false, status: 'MATCHED' }),
     ...overrides,
   };
 }
@@ -100,6 +111,7 @@ export function createMockContext(
     data: createMockData(),
     credentials: createMockCredentials(),
     mappings: createMockMappings(),
+    payments: createMockPayments(),
     state: createMockState(),
     email: createMockEmail(),
     logger: createMockLogger(),

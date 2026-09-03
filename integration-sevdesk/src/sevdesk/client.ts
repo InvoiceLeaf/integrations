@@ -59,7 +59,7 @@ export interface SevdeskInvoiceUpsertInput {
   contactId: string;
   contactPersonId?: number;
   addressCountryId?: number;
-  status: 100;
+  status: 100 | 200;
   invoiceType: 'RE' | 'WKR' | 'SR' | 'MA' | 'TR' | 'AR' | 'ER';
   currency: string;
   taxType: 'default' | 'eu' | 'noteu' | 'custom';

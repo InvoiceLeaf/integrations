@@ -322,13 +322,6 @@ async function importOrUpdateDocument(
     source: 'getmyinvoices',
     description: `Imported from GetMyInvoices document ${trimToUndefined(remoteDocument.documentNumber) ?? externalId}`,
     externalRef: `getmyinvoices:document:${externalId}`,
-    metadata: {
-      getmyinvoicesDocumentUid: externalId,
-      documentNumber: trimToUndefined(remoteDocument.documentNumber) ?? null,
-      paymentStatus: trimToUndefined(remoteDocument.paymentStatus) ?? null,
-      direction: 'inbound',
-      importedBy: 'integration-getmyinvoices',
-    },
   });
 
   await context.mappings.upsert({

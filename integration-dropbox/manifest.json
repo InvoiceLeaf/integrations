@@ -9,7 +9,7 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "folder",
-  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-dropbox/icon.svg",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/dropbox.png",
   "category": "file-storage",
   "tags": [
     "dropbox",

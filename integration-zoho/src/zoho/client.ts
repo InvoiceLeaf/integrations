@@ -1,4 +1,4 @@
-import { trimToUndefined, requestWithRetry, type RequestWithRetryOptions } from '@invoiceleaf/integration-sdk';
+import { trimToUndefined, requestWithRetry } from '@invoiceleaf/integration-sdk';
 
 const DEFAULT_ZOHO_BASE_URL = 'https://www.zohoapis.com/books/v3';
 

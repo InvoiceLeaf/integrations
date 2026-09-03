@@ -384,7 +384,7 @@ async function resolveContact(
     name: contactName,
     categoryId: runtimeDefaults.contactCategoryId,
     customerNumber,
-    taxNumber: trimToUndefined(company?.taxId),
+    taxNumber: trimToUndefined(company?.taxNumber),
     vatNumber: trimToUndefined(company?.vatId),
   };
 
@@ -413,7 +413,7 @@ function buildCompanyCacheKey(company: Document['supplier'] | Document['receiver
     return undefined;
   }
   const normalized = normalizeContactName(name);
-  const taxId = trimToUndefined(company?.taxId);
+  const taxId = trimToUndefined(company?.taxNumber);
   const vatId = trimToUndefined(company?.vatId);
   // Include address fields to differentiate same-name companies without tax IDs
   const city = trimToUndefined(company?.city);

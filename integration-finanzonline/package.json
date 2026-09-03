@@ -28,7 +28,7 @@
     "@invoiceleaf/integration-sdk": "^2.0.0"
   },
   "devDependencies": {
-    "@invoiceleaf/integration-sdk": "file:../../integration-sdk",
+    "@invoiceleaf/integration-sdk": "^2.1.0",
     "esbuild": "^0.24.0",
     "fon-api": "^0.1.1",
     "typescript": "^5.7.0"

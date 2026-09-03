@@ -436,9 +436,9 @@ async function resolveCompanyUid(
     city: trimToUndefined(company?.city),
     email: trimToUndefined(company?.email),
     phone: trimToUndefined(company?.phone),
-    taxNumber: trimToUndefined(company?.taxId),
+    taxNumber: trimToUndefined(company?.taxNumber),
     vatId: trimToUndefined(company?.vatId),
-    url: trimToUndefined(company?.website),
+    url: trimToUndefined(company?.url),
   });
 
   const createdUid = created.companyUid;
@@ -668,7 +668,7 @@ function buildGmiCompanyCacheKey(
 ): string {
   const parts = [
     normalizeString(companyName),
-    normalizeString(trimToUndefined(company?.taxId)),
+    normalizeString(trimToUndefined(company?.taxNumber)),
     normalizeString(trimToUndefined(company?.vatId)),
     normalizeString(trimToUndefined(company?.street)),
     normalizeString(trimToUndefined(company?.zip)),

@@ -53,13 +53,6 @@ async function importAttachment(
       contentBase64: attachment.contentBase64,
       source: getImportSource(context.config),
       externalRef: `${attachment.messageId}:${attachment.attachmentId}:${attachment.checksum}`,
-      metadata: {
-        messageId: attachment.messageId,
-        attachmentId: attachment.attachmentId,
-        subject: attachment.subject,
-        from: attachment.from,
-        date: attachment.date,
-      },
     });
 
     if (result.duplicate) {

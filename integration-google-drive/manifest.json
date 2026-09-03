@@ -9,7 +9,7 @@
     "url": "https://invoiceleaf.com"
   },
   "icon": "folder",
-  "iconUrl": "https://storage.googleapis.com/billkoala-public/integrations/integration-google-drive/icon.svg",
+  "iconUrl": "https://app.invoiceleaf.com/img/integrations/google-drive.png",
   "category": "file-storage",
   "tags": [
     "google-drive",

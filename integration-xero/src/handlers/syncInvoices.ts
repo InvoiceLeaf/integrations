@@ -311,7 +311,7 @@ async function resolveContact(
     contact = await xeroClient.createContact({
       name: contactName,
       emailAddress: trimToUndefined(company?.email),
-      taxNumber: trimToUndefined(company?.taxId),
+      taxNumber: trimToUndefined(company?.taxNumber),
     });
   }
 

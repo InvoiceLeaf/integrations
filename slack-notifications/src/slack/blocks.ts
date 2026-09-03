@@ -290,7 +290,7 @@ export function buildExportCompletedBlocks(exportData: Export, spaceId: string):
 
   // The backend Context API may return `created` (epoch ms) instead of `createdAt` (ISO string),
   // so we handle both field names and both value types for robustness.
-  const rawExport = exportData as Record<string, unknown>;
+  const rawExport = exportData as unknown as Record<string, unknown>;
   const completedTs = exportData.completedAt || exportData.createdAt || rawExport.completed || rawExport.created;
 
   const blocks: SlackBlock[] = [
