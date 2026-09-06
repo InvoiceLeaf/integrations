@@ -3,17 +3,17 @@ import { toErrorMessage } from '@invoiceleaf/integration-sdk';
 import type { CrawlResult, CrawledPdfAttachment, SmtpMailConfig } from '../types.js';
 import { buildAttachmentStateKey } from '../utils/dedupe.js';
 
-function getPrefix(config: SmtpMailConfig): string {
+function getPrefix(config: Partial<SmtpMailConfig>): string {
   return config.stateKeyPrefix || 'smtp-mail';
 }
 
-function getDedupeTtlSeconds(config: SmtpMailConfig): number {
+function getDedupeTtlSeconds(config: Partial<SmtpMailConfig>): number {
   return config.dedupeTtlSeconds && config.dedupeTtlSeconds > 0
     ? config.dedupeTtlSeconds
     : 90 * 24 * 60 * 60;
 }
 
-function getImportSource(config: SmtpMailConfig): string {
+function getImportSource(config: Partial<SmtpMailConfig>): string {
   return config.importSource || 'smtp-mail';
 }
 
@@ -64,12 +64,6 @@ async function importAttachment(
       contentBase64: attachment.contentBase64,
       source: getImportSource(context.config),
       externalRef: `${attachment.uid}:${attachment.fileName}:${attachment.checksum}`,
-      metadata: {
-        uid: attachment.uid,
-        subject: attachment.subject,
-        from: attachment.from,
-        date: attachment.date,
-      },
     });
 
     if (result.duplicate) {

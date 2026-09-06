@@ -169,16 +169,12 @@ describe('syncInvoices handler', () => {
     // mappings.get returns null -> no existing mapping -> new document
     vi.mocked(context.mappings.get).mockResolvedValue(null);
 
-    // Mock GetMyInvoices API calls:
-    // 1. findDocumentByNumber (listDocuments with filter)
-    // 2. listCompanies (for company cache)
-    // 3. listCountries (for country resolution)
-    // 4. uploadDocument
+    // Mock GetMyInvoices API calls, in the order the handler makes them:
     mockFetch
-      .mockResolvedValueOnce(jsonResponse({ totalCount: 0, maxPages: 1, records: [] })) // findDocumentByNumber
-      .mockResolvedValueOnce(jsonResponse([])) // listCompanies
+      .mockResolvedValueOnce(jsonResponse([])) // listCompanies (company cache)
       .mockResolvedValueOnce(jsonResponse([{ countryUid: 1, name: 'Germany', countryCode: 'DE' }])) // listCountries
       .mockResolvedValueOnce(jsonResponse({ companyUid: 99 })) // createCompany
+      .mockResolvedValueOnce(jsonResponse({ totalCount: 0, maxPages: 1, records: [] })) // findDocumentByNumber
       .mockResolvedValueOnce(jsonResponse({ documentUid: 500 })); // uploadDocument
 
     const result = await syncInvoices({} as never, context);

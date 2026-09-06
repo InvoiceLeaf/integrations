@@ -936,7 +936,7 @@ describe('callback dispatch wiring', () => {
     const path = await import('node:path');
     const manifestPath = path.resolve(
       import.meta.dirname ?? new URL('.', import.meta.url).pathname,
-      '..', '..', '..', 'manifest.json',
+      '..', '..', 'manifest.json',
     );
     const raw = await fs.readFile(manifestPath, 'utf-8');
     manifest = JSON.parse(raw);
@@ -1021,7 +1021,7 @@ describe('manifest completeness', () => {
     const path = await import('node:path');
     const manifestPath = path.resolve(
       import.meta.dirname ?? new URL('.', import.meta.url).pathname,
-      '..', '..', '..', 'manifest.json',
+      '..', '..', 'manifest.json',
     );
     manifest = JSON.parse(await fs.readFile(manifestPath, 'utf-8'));
   });

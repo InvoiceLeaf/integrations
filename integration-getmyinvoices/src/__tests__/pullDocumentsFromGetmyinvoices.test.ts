@@ -315,8 +315,11 @@ describe('pullDocumentsFromGetmyinvoices handler', () => {
       })
     );
 
-    // downloadDocumentFile fails
-    mockFetch.mockRejectedValueOnce(new Error('download failed'));
+    // downloadDocumentFile fails on every attempt (GET requests retry up to 3 times)
+    mockFetch
+      .mockRejectedValueOnce(new Error('download failed'))
+      .mockRejectedValueOnce(new Error('download failed'))
+      .mockRejectedValueOnce(new Error('download failed'));
 
     // No deleted documents
     mockFetch.mockResolvedValueOnce(
@@ -363,8 +366,11 @@ describe('pullDocumentsFromGetmyinvoices handler', () => {
       })
     );
 
-    // downloadDocumentFile fails
-    mockFetch.mockRejectedValueOnce(new Error('timeout'));
+    // downloadDocumentFile fails on every attempt (GET requests retry up to 3 times)
+    mockFetch
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockRejectedValueOnce(new Error('timeout'));
 
     // No deleted documents
     mockFetch.mockResolvedValueOnce(

@@ -53,7 +53,8 @@ describe('testConnection handler', () => {
 
   it('returns failure with generic error on network failure', async () => {
     const context = createMockContext();
-    mockFetch.mockRejectedValueOnce(new TypeError('fetch failed'));
+    // GET requests retry up to 3 times on network errors, so reject every attempt.
+    mockFetch.mockRejectedValue(new TypeError('fetch failed'));
 
     const result = await testConnection({} as never, context);
 

@@ -24,12 +24,12 @@ describe('syncInvoiceEvent handler', () => {
     vi.mocked(context.data.getDocument).mockResolvedValue(doc as Document);
     vi.mocked(context.mappings.get).mockResolvedValue(null);
 
-    // Mock fetch for: findDocumentByNumber, listCompanies, listCountries, createCompany, uploadDocument
+    // Call order: listCompanies, listCountries, createCompany, findDocumentByNumber, uploadDocument
     mockFetch
-      .mockResolvedValueOnce(jsonResponse({ totalCount: 0, maxPages: 1, records: [] }))
       .mockResolvedValueOnce(jsonResponse([]))
       .mockResolvedValueOnce(jsonResponse([{ countryUid: 1, name: 'Germany', countryCode: 'DE' }]))
       .mockResolvedValueOnce(jsonResponse({ companyUid: 99 }))
+      .mockResolvedValueOnce(jsonResponse({ totalCount: 0, maxPages: 1, records: [] }))
       .mockResolvedValueOnce(jsonResponse({ documentUid: 500 }));
 
     const result = await syncInvoiceEvent(
@@ -48,11 +48,12 @@ describe('syncInvoiceEvent handler', () => {
     vi.mocked(context.data.getDocument).mockResolvedValue(doc as Document);
     vi.mocked(context.mappings.get).mockResolvedValue(null);
 
+    // Call order: listCompanies, listCountries, createCompany, findDocumentByNumber, uploadDocument
     mockFetch
-      .mockResolvedValueOnce(jsonResponse({ totalCount: 0, maxPages: 1, records: [] }))
       .mockResolvedValueOnce(jsonResponse([]))
       .mockResolvedValueOnce(jsonResponse([{ countryUid: 1, name: 'Germany', countryCode: 'DE' }]))
       .mockResolvedValueOnce(jsonResponse({ companyUid: 99 }))
+      .mockResolvedValueOnce(jsonResponse({ totalCount: 0, maxPages: 1, records: [] }))
       .mockResolvedValueOnce(jsonResponse({ documentUid: 500 }));
 
     const result = await syncInvoiceEvent(
@@ -96,12 +97,11 @@ describe('syncInvoiceEvent handler', () => {
     vi.mocked(context.data.getDocument).mockResolvedValue(doc as Document);
     vi.mocked(context.mappings.get).mockResolvedValue(null);
 
-    // findDocumentByNumber succeeds, but upload fails
+    // listCompanies and listCountries succeed, createCompany (POST, not retried) fails
     mockFetch
-      .mockResolvedValueOnce(jsonResponse({ totalCount: 0, maxPages: 1, records: [] }))
       .mockResolvedValueOnce(jsonResponse([]))
       .mockResolvedValueOnce(jsonResponse([]))
-      .mockRejectedValueOnce(new Error('API connection timeout')); // createCompany fails
+      .mockRejectedValueOnce(new Error('API connection timeout'));
 
     const result = await syncInvoiceEvent(
       { documentId: 'doc-1' } as never,
