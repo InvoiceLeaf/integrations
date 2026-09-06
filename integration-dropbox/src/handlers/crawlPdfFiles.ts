@@ -157,12 +157,6 @@ async function importSingleFile(
       contentBase64: downloaded.contentBase64,
       source: context.config.importSource || 'dropbox',
       externalRef: `dropbox:file:${file.id}:${file.rev ?? 'no-rev'}`,
-      metadata: {
-        dropboxFileId: file.id,
-        pathDisplay: file.pathDisplay,
-        rev: file.rev ?? null,
-        contentHash: file.contentHash ?? null,
-      },
     });
 
     if (importResult.duplicate) {

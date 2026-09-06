@@ -156,12 +156,6 @@ async function importSingleFile(
       contentBase64: downloaded.contentBase64,
       source: context.config.importSource || 'google-drive',
       externalRef: `google-drive:file:${file.id}:${file.modifiedTime ?? 'no-modified'}`,
-      metadata: {
-        driveFileId: file.id,
-        webViewLink: file.webViewLink ?? null,
-        modifiedTime: file.modifiedTime ?? null,
-        md5Checksum: file.md5Checksum ?? null,
-      },
     });
 
     if (importResult.duplicate) {
