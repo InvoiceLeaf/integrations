@@ -2,6 +2,15 @@
   "name": "@invoiceleaf/integration-quickbooks",
   "version": "1.0.0",
   "description": "QuickBooks Online integration for InvoiceLeaf scheduled invoice synchronization",
+  "homepage": "https://invoiceleaf.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InvoiceLeaf/integrations.git",
+    "directory": "integration-quickbooks"
+  },
+  "bugs": {
+    "url": "https://github.com/InvoiceLeaf/integrations/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",

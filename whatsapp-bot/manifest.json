@@ -1,7 +1,7 @@
 {
   "id": "whatsapp-bot",
   "name": "WhatsApp Bot",
-  "description": "Builds WhatsApp notification payloads for InvoiceLeaf via WhatsApp Business API.",
+  "description": "Get InvoiceLeaf notifications on WhatsApp through the WhatsApp Business API: processed invoices, finished exports, payment reminders for due and overdue invoices, and a weekly summary. Act on documents directly from the chat.",
   "version": "1.0.1",
   "author": {
     "name": "InvoiceLeaf",

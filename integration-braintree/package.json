@@ -2,6 +2,15 @@
   "name": "@invoiceleaf/integration-braintree",
   "version": "1.0.0",
   "description": "Braintree integration for InvoiceLeaf: record Braintree transactions as payments and allocate them to your invoices",
+  "homepage": "https://invoiceleaf.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InvoiceLeaf/integrations.git",
+    "directory": "integration-braintree"
+  },
+  "bugs": {
+    "url": "https://github.com/InvoiceLeaf/integrations/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",

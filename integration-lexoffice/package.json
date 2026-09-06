@@ -2,6 +2,15 @@
   "name": "@invoiceleaf/integration-lexoffice",
   "version": "1.0.0",
   "description": "Lexoffice integration for InvoiceLeaf scheduled document synchronization",
+  "homepage": "https://invoiceleaf.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InvoiceLeaf/integrations.git",
+    "directory": "integration-lexoffice"
+  },
+  "bugs": {
+    "url": "https://github.com/InvoiceLeaf/integrations/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",

@@ -1,7 +1,16 @@
 {
   "name": "@invoiceleaf/integration-telegram-bot",
   "version": "1.0.3",
-  "description": "Telegram bot integration payload builders for InvoiceLeaf",
+  "description": "Telegram bot integration for InvoiceLeaf: invoice notifications, payment reminders, weekly summaries, and document actions in Telegram",
+  "homepage": "https://invoiceleaf.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InvoiceLeaf/integrations.git",
+    "directory": "telegram-bot"
+  },
+  "bugs": {
+    "url": "https://github.com/InvoiceLeaf/integrations/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",

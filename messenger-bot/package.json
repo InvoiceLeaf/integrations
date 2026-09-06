@@ -1,7 +1,16 @@
 {
   "name": "@invoiceleaf/integration-messenger-bot",
   "version": "1.0.1",
-  "description": "Facebook Messenger bot integration payload builders for InvoiceLeaf",
+  "description": "Facebook Messenger bot integration for InvoiceLeaf: invoice notifications, payment reminders, weekly summaries, and document actions in Messenger",
+  "homepage": "https://invoiceleaf.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InvoiceLeaf/integrations.git",
+    "directory": "messenger-bot"
+  },
+  "bugs": {
+    "url": "https://github.com/InvoiceLeaf/integrations/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",

@@ -1,7 +1,7 @@
 {
   "id": "telegram-bot",
   "name": "Telegram Bot",
-  "description": "Builds Telegram notification payloads and callback action outputs for InvoiceLeaf.",
+  "description": "Get InvoiceLeaf notifications in Telegram: processed invoices, finished exports, payment reminders for due and overdue invoices, and a weekly summary. Act on documents directly from the chat.",
   "version": "1.0.3",
   "author": {
     "name": "InvoiceLeaf",

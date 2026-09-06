@@ -2,6 +2,15 @@
   "name": "@invoiceleaf/integration-gmail",
   "version": "1.0.0",
   "description": "Gmail OAuth integration for InvoiceLeaf: crawl PDF attachments and import documents",
+  "homepage": "https://invoiceleaf.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InvoiceLeaf/integrations.git",
+    "directory": "integration-gmail"
+  },
+  "bugs": {
+    "url": "https://github.com/InvoiceLeaf/integrations/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",

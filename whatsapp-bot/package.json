@@ -1,7 +1,16 @@
 {
   "name": "@invoiceleaf/integration-whatsapp-bot",
   "version": "1.0.1",
-  "description": "WhatsApp bot integration payload builders for InvoiceLeaf",
+  "description": "WhatsApp bot integration for InvoiceLeaf: invoice notifications, payment reminders, weekly summaries, and document actions via the WhatsApp Business API",
+  "homepage": "https://invoiceleaf.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InvoiceLeaf/integrations.git",
+    "directory": "whatsapp-bot"
+  },
+  "bugs": {
+    "url": "https://github.com/InvoiceLeaf/integrations/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",

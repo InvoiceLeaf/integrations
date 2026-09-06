@@ -2,6 +2,15 @@
   "name": "@invoiceleaf/integration-elster",
   "version": "2.0.2",
   "description": "ELSTER / German Tax integration for InvoiceLeaf: USt-VA and EUER export plus verified ERiC filing via host capability",
+  "homepage": "https://invoiceleaf.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InvoiceLeaf/integrations.git",
+    "directory": "integration-elster"
+  },
+  "bugs": {
+    "url": "https://github.com/InvoiceLeaf/integrations/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",

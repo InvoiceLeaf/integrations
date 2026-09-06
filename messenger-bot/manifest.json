@@ -1,7 +1,7 @@
 {
   "id": "messenger-bot",
   "name": "Messenger Bot",
-  "description": "Builds Facebook Messenger notification payloads for InvoiceLeaf.",
+  "description": "Get InvoiceLeaf notifications in Facebook Messenger: processed invoices, finished exports, payment reminders for due and overdue invoices, and a weekly summary. Act on documents directly from the chat.",
   "version": "1.0.1",
   "author": {
     "name": "InvoiceLeaf",

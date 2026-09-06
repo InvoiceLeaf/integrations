@@ -1,7 +1,7 @@
 {
   "id": "integration-datev",
   "name": "DATEV",
-  "description": "Connect InvoiceLeaf to DATEV accounting:dxso-jobs with OAuth2/OIDC, endpoint discovery, and full dxso-job lifecycle actions.",
+  "description": "Send InvoiceLeaf documents to DATEV. Connect with your DATEV login, sync documents on a schedule or whenever they are created or updated, and follow each transfer job until DATEV has accepted it.",
   "version": "1.0.0",
   "author": {
     "name": "InvoiceLeaf",

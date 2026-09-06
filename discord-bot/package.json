@@ -1,7 +1,25 @@
 {
   "name": "@invoiceleaf/integration-discord-bot",
   "version": "1.0.1",
-  "description": "Discord Bot integration for InvoiceLeaf",
+  "description": "Discord bot integration for InvoiceLeaf: invoice notifications, payment reminders, weekly summaries, and document actions in Discord",
+  "homepage": "https://invoiceleaf.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InvoiceLeaf/integrations.git",
+    "directory": "discord-bot"
+  },
+  "bugs": {
+    "url": "https://github.com/InvoiceLeaf/integrations/issues"
+  },
+  "keywords": [
+    "invoiceleaf",
+    "integration",
+    "discord",
+    "bot",
+    "notifications"
+  ],
+  "license": "MIT",
+  "author": "InvoiceLeaf <support@invoiceleaf.com>",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,6 +42,7 @@
   },
   "files": [
     "dist",
-    "manifest.json"
+    "manifest.json",
+    "README.md"
   ]
 }

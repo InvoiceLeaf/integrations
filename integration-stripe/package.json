@@ -2,6 +2,15 @@
   "name": "@invoiceleaf/integration-stripe",
   "version": "1.0.0",
   "description": "Stripe integration for InvoiceLeaf: import Stripe invoices and record Stripe payments against your documents",
+  "homepage": "https://invoiceleaf.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InvoiceLeaf/integrations.git",
+    "directory": "integration-stripe"
+  },
+  "bugs": {
+    "url": "https://github.com/InvoiceLeaf/integrations/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
