@@ -136,7 +136,9 @@ export class ZohoBooksClient {
     body?: unknown,
     query?: Record<string, string>
   ): Promise<T> {
-    const url = new URL(path, `${this.baseUrl}/`);
+    // The base URL carries the API version path. A leading slash would make
+    // URL() replace that path, so strip it to append instead.
+    const url = new URL(path.replace(/^\/+/, ''), `${this.baseUrl}/`);
     if (query) {
       for (const [key, value] of Object.entries(query)) {
         url.searchParams.set(key, value);

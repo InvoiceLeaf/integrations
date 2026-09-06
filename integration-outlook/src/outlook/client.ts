@@ -180,7 +180,9 @@ export class OutlookClient {
     body?: never,
     query?: Record<string, string>
   ): Promise<T> {
-    const url = new URL(path, `${GRAPH_BASE_URL}/`);
+    // The base URL carries the API version path. A leading slash would make
+    // URL() replace that path, so strip it to append instead.
+    const url = new URL(path.replace(/^\/+/, ''), `${GRAPH_BASE_URL}/`);
     if (query) {
       for (const [key, value] of Object.entries(query)) {
         url.searchParams.set(key, value);
