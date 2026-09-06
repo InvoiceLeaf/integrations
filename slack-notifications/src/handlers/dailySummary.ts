@@ -147,7 +147,7 @@ export const handleDailySummary: IntegrationHandler<
 /**
  * Calculates summary statistics from documents.
  */
-function calculateStats(documents: Document[]): DailySummaryStats {
+export function calculateStats(documents: Document[]): DailySummaryStats {
   // Count by status
   const processedCount = documents.length;
   const pendingCount = documents.filter(

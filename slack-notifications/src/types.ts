@@ -406,24 +406,40 @@ export function getVendorName(doc: Document): string | undefined {
 }
 
 /**
+ * Converts a monetary value to a number.
+ *
+ * The plugin runtime deserializes monetary fields (totalAmount, netAmount,
+ * taxAmount, ...) as decimal strings to preserve precision, even though the
+ * SDK types them as numbers. Summing such values with `+` concatenates
+ * strings and ends up as NaN, so every amount goes through this helper.
+ */
+export function toAmount(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  const amount = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(amount) ? amount : undefined;
+}
+
+/**
  * Gets the total amount from a document.
  */
 export function getTotal(doc: Document): number | undefined {
-  return doc.totalAmount;
+  return toAmount(doc.totalAmount);
 }
 
 /**
  * Gets the net amount from a document.
  */
 export function getNetTotal(doc: Document): number | undefined {
-  return doc.netAmount;
+  return toAmount(doc.netAmount);
 }
 
 /**
  * Gets the VAT/tax amount from a document.
  */
 export function getVatTotal(doc: Document): number | undefined {
-  return doc.taxAmount;
+  return toAmount(doc.taxAmount);
 }
 
 /**
