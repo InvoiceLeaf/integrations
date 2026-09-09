@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-google-drive",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Google Drive integration for InvoiceLeaf: import PDF invoices and upload documents",
   "homepage": "https://invoiceleaf.com",
   "repository": {

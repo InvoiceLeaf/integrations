@@ -2,7 +2,7 @@
   "id": "integration-zoho",
   "name": "Zoho Books",
   "description": "Sync InvoiceLeaf invoices to Zoho Books on a schedule with contact resolution and idempotent mappings.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -32,6 +32,66 @@
         "scopes": [
           "ZohoBooks.fullaccess.all",
           "offline_access"
+        ],
+        "pkceRequired": false
+      },
+      "appCredentials": {
+        "registrationUrl": "https://api-console.zoho.com/",
+        "instructions": "Create a Server-based Application in the Zoho API console. The data centre must match the one your Zoho Books organisation lives in, otherwise the tokens are rejected.",
+        "fields": [
+          {
+            "key": "clientId",
+            "label": "Client ID",
+            "description": "Public identifier of the app you registered with the provider."
+          },
+          {
+            "key": "clientSecret",
+            "label": "Client secret",
+            "secret": true,
+            "description": "Stored encrypted. Shown only as a masked placeholder once saved."
+          },
+          {
+            "key": "redirectUri",
+            "label": "Redirect URI",
+            "description": "Must match a redirect URI registered with the provider, character for character.",
+            "default": "https://app.invoiceleaf.com/integrations/oauth/callback"
+          },
+          {
+            "key": "dataCenter",
+            "label": "Data centre",
+            "description": "Zoho domain suffix of your account region.",
+            "default": "com",
+            "options": [
+              {
+                "value": "com",
+                "label": "United States (.com)"
+              },
+              {
+                "value": "eu",
+                "label": "Europe (.eu)"
+              },
+              {
+                "value": "in",
+                "label": "India (.in)"
+              },
+              {
+                "value": "com.au",
+                "label": "Australia (.com.au)"
+              },
+              {
+                "value": "jp",
+                "label": "Japan (.jp)"
+              },
+              {
+                "value": "ca",
+                "label": "Canada (.ca)"
+              },
+              {
+                "value": "com.cn",
+                "label": "China (.com.cn)"
+              }
+            ]
+          }
         ]
       }
     }

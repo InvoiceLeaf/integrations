@@ -2,7 +2,7 @@
   "id": "integration-datev",
   "name": "DATEV",
   "description": "Send InvoiceLeaf documents to DATEV. Connect with your DATEV login, sync documents on a schedule or whenever they are created or updated, and follow each transfer job until DATEV has accepted it.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -37,6 +37,29 @@
           "offline_access"
         ],
         "pkceRequired": true
+      },
+      "appCredentials": {
+        "registrationUrl": "https://developer.datev.de/",
+        "instructions": "Register a production client in the DATEV developer portal and have it approved for accounting:dxso-jobs.",
+        "fields": [
+          {
+            "key": "clientId",
+            "label": "Client ID",
+            "description": "Public identifier of the app you registered with the provider."
+          },
+          {
+            "key": "clientSecret",
+            "label": "Client secret",
+            "secret": true,
+            "description": "Stored encrypted. Shown only as a masked placeholder once saved."
+          },
+          {
+            "key": "redirectUri",
+            "label": "Redirect URI",
+            "description": "Must match a redirect URI registered with the provider, character for character.",
+            "default": "https://app.invoiceleaf.com/integrations/oauth/callback"
+          }
+        ]
       }
     },
     {
@@ -53,6 +76,29 @@
           "offline_access"
         ],
         "pkceRequired": true
+      },
+      "appCredentials": {
+        "registrationUrl": "https://developer.datev.de/",
+        "instructions": "Use the sandbox client from the DATEV developer portal. Sandbox credentials are separate from production ones.",
+        "fields": [
+          {
+            "key": "clientId",
+            "label": "Client ID",
+            "description": "Public identifier of the app you registered with the provider."
+          },
+          {
+            "key": "clientSecret",
+            "label": "Client secret",
+            "secret": true,
+            "description": "Stored encrypted. Shown only as a masked placeholder once saved."
+          },
+          {
+            "key": "redirectUri",
+            "label": "Redirect URI",
+            "description": "Must match a redirect URI registered with the provider, character for character.",
+            "default": "https://app.invoiceleaf.com/integrations/oauth/callback"
+          }
+        ]
       }
     },
     {
@@ -69,6 +115,29 @@
           "offline_access"
         ],
         "pkceRequired": true
+      },
+      "appCredentials": {
+        "registrationUrl": "https://developer.datev.de/",
+        "instructions": "Client registered against the DATEV IDP-next identity provider.",
+        "fields": [
+          {
+            "key": "clientId",
+            "label": "Client ID",
+            "description": "Public identifier of the app you registered with the provider."
+          },
+          {
+            "key": "clientSecret",
+            "label": "Client secret",
+            "secret": true,
+            "description": "Stored encrypted. Shown only as a masked placeholder once saved."
+          },
+          {
+            "key": "redirectUri",
+            "label": "Redirect URI",
+            "description": "Must match a redirect URI registered with the provider, character for character.",
+            "default": "https://app.invoiceleaf.com/integrations/oauth/callback"
+          }
+        ]
       }
     }
   ],

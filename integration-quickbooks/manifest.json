@@ -2,7 +2,7 @@
   "id": "integration-quickbooks",
   "name": "QuickBooks",
   "description": "Sync InvoiceLeaf invoices to QuickBooks Online on a schedule with contact/vendor resolution and idempotent mappings.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -35,6 +35,46 @@
           "profile",
           "email",
           "offline_access"
+        ],
+        "pkceRequired": false
+      },
+      "appCredentials": {
+        "registrationUrl": "https://developer.intuit.com/app/developer/dashboard",
+        "instructions": "Create an app in the Intuit developer dashboard, then copy its keys from the Keys & credentials tab. Add the redirect URI below to the app's Redirect URIs list.",
+        "fields": [
+          {
+            "key": "clientId",
+            "label": "Client ID",
+            "description": "Public identifier of the app you registered with the provider."
+          },
+          {
+            "key": "clientSecret",
+            "label": "Client secret",
+            "secret": true,
+            "description": "Stored encrypted. Shown only as a masked placeholder once saved."
+          },
+          {
+            "key": "redirectUri",
+            "label": "Redirect URI",
+            "description": "Must match a redirect URI registered with the provider, character for character.",
+            "default": "https://app.invoiceleaf.com/integrations/oauth/callback"
+          },
+          {
+            "key": "environment",
+            "label": "Environment",
+            "description": "Sandbox uses Intuit's sandbox companies and a separate set of keys.",
+            "default": "production",
+            "options": [
+              {
+                "value": "production",
+                "label": "Production"
+              },
+              {
+                "value": "sandbox",
+                "label": "Sandbox"
+              }
+            ]
+          }
         ]
       }
     }

@@ -2,7 +2,7 @@
   "id": "integration-xero",
   "name": "Xero",
   "description": "Sync InvoiceLeaf invoices to Xero on a schedule with contact resolution and idempotent mappings.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -32,6 +32,30 @@
           "offline_access",
           "accounting.transactions",
           "accounting.contacts"
+        ],
+        "pkceRequired": false
+      },
+      "appCredentials": {
+        "registrationUrl": "https://developer.xero.com/app/manage",
+        "instructions": "Create a web app in the Xero developer portal and copy its client id and secret. Add the redirect URI below to the app's redirect URIs.",
+        "fields": [
+          {
+            "key": "clientId",
+            "label": "Client ID",
+            "description": "Public identifier of the app you registered with the provider."
+          },
+          {
+            "key": "clientSecret",
+            "label": "Client secret",
+            "secret": true,
+            "description": "Stored encrypted. Shown only as a masked placeholder once saved."
+          },
+          {
+            "key": "redirectUri",
+            "label": "Redirect URI",
+            "description": "Must match a redirect URI registered with the provider, character for character.",
+            "default": "https://app.invoiceleaf.com/integrations/oauth/callback"
+          }
         ]
       }
     }

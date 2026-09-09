@@ -2,7 +2,7 @@
   "id": "integration-outlook",
   "name": "Outlook",
   "description": "Import PDF attachments from Outlook/Microsoft 365 mailboxes into InvoiceLeaf using OAuth.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -11,8 +11,15 @@
   "icon": "mail",
   "iconUrl": "https://app.invoiceleaf.com/img/integrations/outlook.png",
   "category": "communication",
-  "tags": ["outlook", "microsoft-365", "email", "attachments"],
-  "dataAccess": ["documents"],
+  "tags": [
+    "outlook",
+    "microsoft-365",
+    "email",
+    "attachments"
+  ],
+  "dataAccess": [
+    "documents"
+  ],
   "externalAuth": [
     {
       "provider": "outlook",
@@ -30,6 +37,36 @@
           "email"
         ],
         "pkceRequired": true
+      },
+      "appCredentials": {
+        "registrationUrl": "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade",
+        "instructions": "Register an application in Microsoft Entra ID, add a Web platform with the redirect URI below, and create a client secret under Certificates & secrets.",
+        "fields": [
+          {
+            "key": "clientId",
+            "label": "Client ID",
+            "description": "Public identifier of the app you registered with the provider."
+          },
+          {
+            "key": "clientSecret",
+            "label": "Client secret",
+            "secret": true,
+            "description": "Stored encrypted. Shown only as a masked placeholder once saved."
+          },
+          {
+            "key": "redirectUri",
+            "label": "Redirect URI",
+            "description": "Must match a redirect URI registered with the provider, character for character.",
+            "default": "https://app.invoiceleaf.com/integrations/oauth/callback"
+          },
+          {
+            "key": "tenantId",
+            "label": "Directory (tenant) ID",
+            "required": false,
+            "description": "Use common to accept any Microsoft account, or a tenant id to restrict sign-in to one directory.",
+            "default": "common"
+          }
+        ]
       }
     }
   ],
@@ -119,12 +156,22 @@
       {
         "title": "Mailbox Query",
         "description": "Configure which Outlook messages are scanned",
-        "fields": ["folderId", "lookbackDays", "onlyUnread"]
+        "fields": [
+          "folderId",
+          "lookbackDays",
+          "onlyUnread"
+        ]
       },
       {
         "title": "Crawler Limits",
         "description": "Control per-run workload and dedupe",
-        "fields": ["maxMessagesPerRun", "maxAttachmentsPerMessage", "stateKeyPrefix", "dedupeTtlSeconds", "importSource"]
+        "fields": [
+          "maxMessagesPerRun",
+          "maxAttachmentsPerMessage",
+          "stateKeyPrefix",
+          "dedupeTtlSeconds",
+          "importSource"
+        ]
       }
     ]
   }

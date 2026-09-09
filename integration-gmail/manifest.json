@@ -2,7 +2,7 @@
   "id": "integration-gmail",
   "name": "Gmail",
   "description": "Import PDF attachments from Gmail into InvoiceLeaf using OAuth.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -11,8 +11,16 @@
   "icon": "mail",
   "iconUrl": "https://app.invoiceleaf.com/img/integrations/gmail.png",
   "category": "communication",
-  "tags": ["gmail", "google", "email", "inbox", "attachments"],
-  "dataAccess": ["documents"],
+  "tags": [
+    "gmail",
+    "google",
+    "email",
+    "inbox",
+    "attachments"
+  ],
+  "dataAccess": [
+    "documents"
+  ],
   "externalAuth": [
     {
       "provider": "gmail",
@@ -28,6 +36,29 @@
           "profile"
         ],
         "pkceRequired": true
+      },
+      "appCredentials": {
+        "registrationUrl": "https://console.cloud.google.com/apis/credentials",
+        "instructions": "Create an OAuth 2.0 Client ID of type Web application in Google Cloud, enable the Gmail API, and add the redirect URI below as an authorised redirect URI.",
+        "fields": [
+          {
+            "key": "clientId",
+            "label": "Client ID",
+            "description": "Public identifier of the app you registered with the provider."
+          },
+          {
+            "key": "clientSecret",
+            "label": "Client secret",
+            "secret": true,
+            "description": "Stored encrypted. Shown only as a masked placeholder once saved."
+          },
+          {
+            "key": "redirectUri",
+            "label": "Redirect URI",
+            "description": "Must match a redirect URI registered with the provider, character for character.",
+            "default": "https://app.invoiceleaf.com/integrations/oauth/callback"
+          }
+        ]
       }
     }
   ],
@@ -109,12 +140,21 @@
       {
         "title": "Mailbox Query",
         "description": "Configure which Gmail messages are scanned",
-        "fields": ["query", "includeSpamTrash"]
+        "fields": [
+          "query",
+          "includeSpamTrash"
+        ]
       },
       {
         "title": "Crawler Limits",
         "description": "Control per-run workload and dedupe",
-        "fields": ["maxMessagesPerRun", "maxAttachmentsPerMessage", "stateKeyPrefix", "dedupeTtlSeconds", "importSource"]
+        "fields": [
+          "maxMessagesPerRun",
+          "maxAttachmentsPerMessage",
+          "stateKeyPrefix",
+          "dedupeTtlSeconds",
+          "importSource"
+        ]
       }
     ]
   }

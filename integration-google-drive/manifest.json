@@ -2,7 +2,7 @@
   "id": "integration-google-drive",
   "name": "Google Drive",
   "description": "Import PDF invoices from Google Drive and upload InvoiceLeaf documents to Drive folders.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -35,6 +35,29 @@
           "profile"
         ],
         "pkceRequired": true
+      },
+      "appCredentials": {
+        "registrationUrl": "https://console.cloud.google.com/apis/credentials",
+        "instructions": "Create an OAuth 2.0 Client ID of type Web application in Google Cloud, enable the Drive API, and add the redirect URI below as an authorised redirect URI.",
+        "fields": [
+          {
+            "key": "clientId",
+            "label": "Client ID",
+            "description": "Public identifier of the app you registered with the provider."
+          },
+          {
+            "key": "clientSecret",
+            "label": "Client secret",
+            "secret": true,
+            "description": "Stored encrypted. Shown only as a masked placeholder once saved."
+          },
+          {
+            "key": "redirectUri",
+            "label": "Redirect URI",
+            "description": "Must match a redirect URI registered with the provider, character for character.",
+            "default": "https://app.invoiceleaf.com/integrations/oauth/callback"
+          }
+        ]
       }
     }
   ],

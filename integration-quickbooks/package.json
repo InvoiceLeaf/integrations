@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-quickbooks",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "QuickBooks Online integration for InvoiceLeaf scheduled invoice synchronization",
   "homepage": "https://invoiceleaf.com",
   "repository": {

@@ -2,7 +2,7 @@
   "id": "integration-dropbox",
   "name": "Dropbox",
   "description": "Import PDF invoices from Dropbox and upload InvoiceLeaf documents to Dropbox folders.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -36,6 +36,29 @@
           "offline_access"
         ],
         "pkceRequired": true
+      },
+      "appCredentials": {
+        "registrationUrl": "https://www.dropbox.com/developers/apps",
+        "instructions": "Create a scoped app in the Dropbox App Console, grant it the scopes this integration declares, and add the redirect URI below under OAuth 2.",
+        "fields": [
+          {
+            "key": "clientId",
+            "label": "App key",
+            "description": "Public identifier of the app you registered with the provider."
+          },
+          {
+            "key": "clientSecret",
+            "label": "App secret",
+            "secret": true,
+            "description": "Stored encrypted. Shown only as a masked placeholder once saved."
+          },
+          {
+            "key": "redirectUri",
+            "label": "Redirect URI",
+            "description": "Must match a redirect URI registered with the provider, character for character.",
+            "default": "https://app.invoiceleaf.com/integrations/oauth/callback"
+          }
+        ]
       }
     }
   ],
