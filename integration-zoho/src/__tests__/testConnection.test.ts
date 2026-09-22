@@ -131,4 +131,59 @@ describe('testConnection handler', () => {
       expect(result.error.length).toBeLessThan(400);
     }
   });
+
+  it('calls the API host of the account data centre from the connection', async () => {
+    const ctx = createMockContext();
+    vi.mocked(ctx.credentials.getConnectionInfo).mockResolvedValue({
+      connected: true,
+      provider: 'zoho-books',
+      apiDomain: 'https://www.zohoapis.eu',
+    });
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ code: 0, organizations: [{ organization_id: 'org-1', name: 'Acme GmbH' }] })
+    );
+
+    const result = await testConnection({}, ctx);
+
+    expect(result.success).toBe(true);
+    expect(String(mockFetch.mock.calls[0]?.[0])).toMatch(
+      /^https:\/\/www\.zohoapis\.eu\/books\/v3\/organizations/
+    );
+  });
+
+  it('maps the api.zoho form of api_domain to the Books host of the same data centre', async () => {
+    const ctx = createMockContext();
+    vi.mocked(ctx.credentials.getConnectionInfo).mockResolvedValue({
+      connected: true,
+      provider: 'zoho-books',
+      apiDomain: 'https://api.zoho.com.au',
+    });
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ code: 0, organizations: [{ organization_id: 'org-1', name: 'Acme Pty' }] })
+    );
+
+    await testConnection({}, ctx);
+
+    expect(String(mockFetch.mock.calls[0]?.[0])).toMatch(
+      /^https:\/\/www\.zohoapis\.com\.au\/books\/v3\/organizations/
+    );
+  });
+
+  it('prefers a configured API base URL over the connection data centre', async () => {
+    const ctx = createMockContext({ apiBaseUrl: 'https://www.zohoapis.in/books/v3' });
+    vi.mocked(ctx.credentials.getConnectionInfo).mockResolvedValue({
+      connected: true,
+      provider: 'zoho-books',
+      apiDomain: 'https://www.zohoapis.eu',
+    });
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ code: 0, organizations: [{ organization_id: 'org-1', name: 'Acme India' }] })
+    );
+
+    await testConnection({}, ctx);
+
+    expect(String(mockFetch.mock.calls[0]?.[0])).toMatch(
+      /^https:\/\/www\.zohoapis\.in\/books\/v3\/organizations/
+    );
+  });
 });

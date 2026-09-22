@@ -2,7 +2,7 @@
   "id": "integration-dropbox",
   "name": "Dropbox",
   "description": "Import PDF invoices from Dropbox and upload InvoiceLeaf documents to Dropbox folders.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -32,10 +32,12 @@
           "account_info.read",
           "files.metadata.read",
           "files.content.read",
-          "files.content.write",
-          "offline_access"
+          "files.content.write"
         ],
-        "pkceRequired": true
+        "pkceRequired": true,
+        "authorizeParams": {
+          "token_access_type": "offline"
+        }
       },
       "appCredentials": {
         "registrationUrl": "https://www.dropbox.com/developers/apps",

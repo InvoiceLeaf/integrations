@@ -22,14 +22,14 @@ beforeEach(() => {
 });
 
 describe('testConnection', () => {
-  it('returns connected=true when listClients succeeds', async () => {
+  it('returns connected=true when listClients succeeds without a configured client', async () => {
     const clients = [
       { id: '455148-1', name: 'Client A' },
       { id: '455148-2', name: 'Client B' },
     ];
     mockFetch.mockResolvedValueOnce(jsonFetchResponse(clients));
 
-    const ctx = createMockContext();
+    const ctx = createMockContext({ defaultClientId: undefined });
     const result = await testConnection({}, ctx);
 
     expect(result.success).toBe(true);
@@ -41,11 +41,25 @@ describe('testConnection', () => {
     expect(result.message).toContain('2 accessible client(s)');
   });
 
-  it('limits sampleClients to 10', async () => {
+  it('checks the configured client instead of listing all clients', async () => {
+    // A connection made with a configured client is bound to it and cannot list clients.
+    const client = { id: '29098-55003', name: 'Client A' };
+    mockFetch.mockResolvedValueOnce(jsonFetchResponse(client));
+
+    const ctx = createMockContext({ defaultClientId: '29098-55003' });
+    const result = await testConnection({}, ctx);
+
+    expect(result.success).toBe(true);
+    expect(result.clientCount).toBe(1);
+    expect(result.sampleClients).toEqual([client]);
+    expect(String(mockFetch.mock.calls[0]?.[0])).toContain('/clients/29098-55003');
+  });
+
+  it('limits sampleClients to 10 without a configured client', async () => {
     const clients = Array.from({ length: 15 }, (_, i) => ({ id: `client-${i}`, name: `Client ${i}` }));
     mockFetch.mockResolvedValueOnce(jsonFetchResponse(clients));
 
-    const ctx = createMockContext();
+    const ctx = createMockContext({ defaultClientId: undefined });
     const result = await testConnection({}, ctx);
 
     expect(result.success).toBe(true);

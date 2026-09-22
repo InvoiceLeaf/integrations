@@ -2,7 +2,7 @@
   "id": "integration-outlook",
   "name": "Outlook",
   "description": "Import PDF attachments from Outlook/Microsoft 365 mailboxes into InvoiceLeaf using OAuth.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -26,8 +26,8 @@
       "name": "Microsoft Outlook",
       "type": "oauth2",
       "oauth": {
-        "authorizeUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-        "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+        "authorizeUrl": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/authorize",
+        "tokenUrl": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token",
         "scopes": [
           "offline_access",
           "Mail.Read",

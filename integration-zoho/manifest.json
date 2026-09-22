@@ -2,7 +2,7 @@
   "id": "integration-zoho",
   "name": "Zoho Books",
   "description": "Sync InvoiceLeaf invoices to Zoho Books on a schedule with contact resolution and idempotent mappings.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -27,17 +27,31 @@
       "name": "Zoho Books",
       "type": "oauth2",
       "oauth": {
-        "authorizeUrl": "https://accounts.zoho.com/oauth/v2/auth",
-        "tokenUrl": "https://accounts.zoho.com/oauth/v2/token",
+        "authorizeUrl": "https://accounts.{dataCenter}/oauth/v2/auth",
+        "tokenUrl": "https://accounts.{dataCenter}/oauth/v2/token",
         "scopes": [
-          "ZohoBooks.fullaccess.all",
-          "offline_access"
+          "ZohoBooks.contacts.READ",
+          "ZohoBooks.contacts.CREATE",
+          "ZohoBooks.invoices.READ",
+          "ZohoBooks.invoices.CREATE",
+          "ZohoBooks.settings.READ"
         ],
-        "pkceRequired": false
+        "pkceRequired": false,
+        "authorizeParams": {
+          "access_type": "offline",
+          "prompt": "consent"
+        },
+        "scopeSeparator": ",",
+        "callbackPlaceholders": {
+          "dataCenter": {
+            "param": "accounts-server",
+            "prefix": "https://accounts."
+          }
+        }
       },
       "appCredentials": {
         "registrationUrl": "https://api-console.zoho.com/",
-        "instructions": "Create a Server-based Application in the Zoho API console. The data centre must match the one your Zoho Books organisation lives in, otherwise the tokens are rejected.",
+        "instructions": "Create a Server-based Application in the Zoho API console and enable multi data centre support for the data centres your customers use. Choose the data centre the app was created in; accounts in other data centres are then connected through their own one automatically.",
         "fields": [
           {
             "key": "clientId",
@@ -59,36 +73,56 @@
           {
             "key": "dataCenter",
             "label": "Data centre",
-            "description": "Zoho domain suffix of your account region.",
-            "default": "com",
+            "description": "Zoho accounts domain of the data centre the app was registered in.",
+            "default": "zoho.com",
             "options": [
               {
-                "value": "com",
-                "label": "United States (.com)"
+                "value": "zoho.com",
+                "label": "United States (zoho.com)"
               },
               {
-                "value": "eu",
-                "label": "Europe (.eu)"
+                "value": "zoho.eu",
+                "label": "Europe (zoho.eu)"
               },
               {
-                "value": "in",
-                "label": "India (.in)"
+                "value": "zoho.uk",
+                "label": "United Kingdom (zoho.uk)"
               },
               {
-                "value": "com.au",
-                "label": "Australia (.com.au)"
+                "value": "zoho.in",
+                "label": "India (zoho.in)"
               },
               {
-                "value": "jp",
-                "label": "Japan (.jp)"
+                "value": "zohohq.in",
+                "label": "India (zohohq.in)"
               },
               {
-                "value": "ca",
-                "label": "Canada (.ca)"
+                "value": "zoho.com.au",
+                "label": "Australia (zoho.com.au)"
               },
               {
-                "value": "com.cn",
-                "label": "China (.com.cn)"
+                "value": "zoho.jp",
+                "label": "Japan (zoho.jp)"
+              },
+              {
+                "value": "zohocloud.ca",
+                "label": "Canada (zohocloud.ca)"
+              },
+              {
+                "value": "zoho.sa",
+                "label": "Saudi Arabia (zoho.sa)"
+              },
+              {
+                "value": "zoho.ae",
+                "label": "United Arab Emirates (zoho.ae)"
+              },
+              {
+                "value": "zoho.sg",
+                "label": "Singapore (zoho.sg)"
+              },
+              {
+                "value": "zoho.com.cn",
+                "label": "China (zoho.com.cn)"
               }
             ]
           }

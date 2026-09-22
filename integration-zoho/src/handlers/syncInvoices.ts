@@ -87,7 +87,10 @@ export const syncInvoices: IntegrationHandler<ScheduleInput, SyncInvoicesResult,
     resultBase.fromDate = fromDate;
 
     const accessToken = await context.credentials.getAccessToken(SYSTEM);
-    const client = new ZohoBooksClient(accessToken, context.config.apiBaseUrl);
+    const client = new ZohoBooksClient(
+      accessToken,
+      ZohoBooksClient.baseUrlFor(context.config.apiBaseUrl, connectionInfo.apiDomain)
+    );
 
     const organizations = await client.listOrganizations();
     const organization = selectOrganization(organizations, context.config.organizationId);

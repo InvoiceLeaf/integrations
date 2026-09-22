@@ -2,7 +2,7 @@
   "id": "integration-datev",
   "name": "DATEV",
   "description": "Send InvoiceLeaf documents to DATEV. Connect with your DATEV login, sync documents on a schedule or whenever they are created or updated, and follow each transfer job until DATEV has accepted it.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -34,9 +34,10 @@
           "openid",
           "accounting:clients:read",
           "accounting:dxso-jobs",
-          "offline_access"
+          "offline_access datev:iam:client:{config.defaultClientId}"
         ],
-        "pkceRequired": true
+        "pkceRequired": true,
+        "tokenAuthMethod": "client_secret_basic"
       },
       "appCredentials": {
         "registrationUrl": "https://developer.datev.de/",
@@ -73,9 +74,10 @@
           "openid",
           "accounting:clients:read",
           "accounting:dxso-jobs",
-          "offline_access"
+          "offline_access datev:iam:client:{config.defaultClientId}"
         ],
-        "pkceRequired": true
+        "pkceRequired": true,
+        "tokenAuthMethod": "client_secret_basic"
       },
       "appCredentials": {
         "registrationUrl": "https://developer.datev.de/",
@@ -112,9 +114,10 @@
           "openid",
           "accounting:clients:read",
           "accounting:dxso-jobs",
-          "offline_access"
+          "offline_access datev:iam:client:{config.defaultClientId}"
         ],
-        "pkceRequired": true
+        "pkceRequired": true,
+        "tokenAuthMethod": "client_secret_basic"
       },
       "appCredentials": {
         "registrationUrl": "https://developer.datev.de/",
@@ -500,7 +503,7 @@
       "defaultClientId": {
         "type": "string",
         "title": "Default Client ID",
-        "description": "Default DATEV client-id placeholder used by actions when no clientId is provided."
+        "description": "DATEV client (Beraternummer-Mandantennummer, for example 29098-55003) used by actions when no clientId is given. Set it before connecting: DATEV then grants a connection that stays valid for two years but only works for this client, and listing all clients is no longer possible. Without it DATEV grants an 11-hour session."
       },
       "defaultImportType": {
         "type": "string",

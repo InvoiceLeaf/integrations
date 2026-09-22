@@ -54,6 +54,27 @@ export class ZohoBooksClient {
     this.baseUrl = trimTrailingSlash(baseUrl ?? DEFAULT_ZOHO_BASE_URL);
   }
 
+  /**
+   * The Books API base URL: the configured override, else the API host of the account's data
+   * centre from the connection, else the US default.
+   */
+  static baseUrlFor(configuredBaseUrl?: string, apiDomain?: string): string | undefined {
+    const override = trimToUndefined(configuredBaseUrl);
+    if (override) {
+      return override;
+    }
+    const domain = trimToUndefined(apiDomain);
+    if (!domain) {
+      return undefined;
+    }
+    // Zoho documents api_domain both as https://www.zohoapis.<dc> and as https://api.zoho.<dc>;
+    // Books is served from the zohoapis host of that data centre either way.
+    const dataCentre = /^https:\/\/(?:www\.zohoapis|api\.zoho)\.([a-z.]+?)\/?$/i.exec(domain);
+    return dataCentre
+      ? `https://www.zohoapis.${dataCentre[1]}/books/v3`
+      : `${trimTrailingSlash(domain)}/books/v3`;
+  }
+
   async listOrganizations(): Promise<ZohoOrganization[]> {
     const response = await this.request<ZohoApiResponse<unknown>>('GET', '/organizations');
     return response.organizations ?? [];

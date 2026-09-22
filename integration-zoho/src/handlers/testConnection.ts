@@ -21,7 +21,10 @@ export const testConnection: IntegrationHandler<
     }
 
     const accessToken = await context.credentials.getAccessToken('zoho-books');
-    const client = new ZohoBooksClient(accessToken, context.config.apiBaseUrl);
+    const client = new ZohoBooksClient(
+      accessToken,
+      ZohoBooksClient.baseUrlFor(context.config.apiBaseUrl, connectionInfo.apiDomain)
+    );
     const organizations = await client.listOrganizations();
     if (organizations.length === 0) {
       return {

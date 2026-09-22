@@ -2,7 +2,7 @@
   "id": "integration-gmail",
   "name": "Gmail",
   "description": "Import PDF attachments from Gmail into InvoiceLeaf using OAuth.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -35,11 +35,15 @@
           "email",
           "profile"
         ],
-        "pkceRequired": true
+        "pkceRequired": true,
+        "authorizeParams": {
+          "access_type": "offline",
+          "prompt": "consent"
+        }
       },
       "appCredentials": {
         "registrationUrl": "https://console.cloud.google.com/apis/credentials",
-        "instructions": "Create an OAuth 2.0 Client ID of type Web application in Google Cloud, enable the Gmail API, and add the redirect URI below as an authorised redirect URI.",
+        "instructions": "Create an OAuth 2.0 Client ID of type Web application in Google Cloud, enable the Gmail API, and add the redirect URI below as an authorised redirect URI. While the OAuth consent screen is in Testing, Google expires refresh tokens after 7 days, so publish it. gmail.readonly is a restricted scope: publishing requires Google verification including an annual CASA security assessment.",
         "fields": [
           {
             "key": "clientId",

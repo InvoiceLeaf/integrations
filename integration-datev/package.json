@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-datev",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "DATEV integration for InvoiceLeaf: sync documents to DATEV through the accounting:dxso-jobs API with scheduled and event-driven transfers",
   "homepage": "https://invoiceleaf.com",
   "repository": {

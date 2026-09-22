@@ -14,7 +14,12 @@ export const testConnection: IntegrationHandler<UserActionInput, TestConnectionR
 ): Promise<TestConnectionResult> => {
   try {
     const runtime = await buildRuntime(context);
-    const clients = await runtime.client.listClients();
+    // Once a client is configured, DATEV binds the connection to it, and such a connection
+    // cannot list clients. The configured client itself is reachable either way.
+    const defaultClientId = context.config.defaultClientId?.trim();
+    const clients = defaultClientId
+      ? [await runtime.client.getClient(defaultClientId)]
+      : await runtime.client.listClients();
 
     return {
       success: true,

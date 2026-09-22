@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-dropbox",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Dropbox integration for InvoiceLeaf: import PDF invoices and upload documents",
   "homepage": "https://invoiceleaf.com",
   "repository": {

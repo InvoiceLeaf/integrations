@@ -2,7 +2,7 @@
   "id": "integration-xero",
   "name": "Xero",
   "description": "Sync InvoiceLeaf invoices to Xero on a schedule with contact resolution and idempotent mappings.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -30,10 +30,12 @@
         "tokenUrl": "https://identity.xero.com/connect/token",
         "scopes": [
           "offline_access",
-          "accounting.transactions",
-          "accounting.contacts"
+          "accounting.invoices",
+          "accounting.contacts",
+          "accounting.settings.read"
         ],
-        "pkceRequired": false
+        "pkceRequired": false,
+        "tokenAuthMethod": "client_secret_basic"
       },
       "appCredentials": {
         "registrationUrl": "https://developer.xero.com/app/manage",

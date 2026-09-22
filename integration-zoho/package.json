@@ -1,6 +1,6 @@
 {
   "name": "@invoiceleaf/integration-zoho",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Zoho Books integration for InvoiceLeaf scheduled invoice synchronization",
   "homepage": "https://invoiceleaf.com",
   "repository": {
@@ -37,7 +37,7 @@
     "@invoiceleaf/integration-sdk": "^2.0.0"
   },
   "devDependencies": {
-    "@invoiceleaf/integration-sdk": "^2.1.0",
+    "@invoiceleaf/integration-sdk": "^2.3.0",
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0",
     "vitest": "^3.1.0"

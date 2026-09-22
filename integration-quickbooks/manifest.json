@@ -2,7 +2,7 @@
   "id": "integration-quickbooks",
   "name": "QuickBooks",
   "description": "Sync InvoiceLeaf invoices to QuickBooks Online on a schedule with contact/vendor resolution and idempotent mappings.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "InvoiceLeaf",
     "email": "support@invoiceleaf.com",
@@ -33,10 +33,11 @@
           "com.intuit.quickbooks.accounting",
           "openid",
           "profile",
-          "email",
-          "offline_access"
+          "email"
         ],
-        "pkceRequired": false
+        "pkceRequired": false,
+        "tokenAuthMethod": "client_secret_basic",
+        "accountIdParam": "realmId"
       },
       "appCredentials": {
         "registrationUrl": "https://developer.intuit.com/app/developer/dashboard",
