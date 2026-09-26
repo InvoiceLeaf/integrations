@@ -11,7 +11,7 @@ import type {
   DocumentNotificationResult,
   SlackIntegrationConfig,
 } from '../types.js';
-import { getVendorName, getTotal, getCurrencyCode, getCompanyId } from '../types.js';
+import { getVendorName, getTotal, getCurrencyCode, getCompanyId, isProcessedInvoice } from '../types.js';
 import { SlackClient } from '../slack/client.js';
 import { buildDocumentProcessedBlocks, statusAttachment } from '../slack/blocks.js';
 import { shouldNotify, isNotificationEnabled } from '../utils/filters.js';
@@ -67,6 +67,19 @@ export const handleDocumentProcessed: IntegrationHandler<
       skipped: true,
       reason: 'document_not_available',
       documentId,
+    };
+  }
+
+  if (!isProcessedInvoice(document)) {
+    logger.info('Document was not processed into an invoice, skipping', {
+      documentId: document.id,
+      errorType: document.errorType,
+    });
+    return {
+      success: true,
+      skipped: true,
+      reason: 'not_an_invoice',
+      documentId: document.id,
     };
   }
 

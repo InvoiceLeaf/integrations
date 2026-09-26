@@ -11,7 +11,13 @@ import type {
   DailySummaryStats,
   SlackIntegrationConfig,
 } from '../types.js';
-import { getVendorName, getTotal, getCurrencyCode, getCategoryName } from '../types.js';
+import {
+  getVendorName,
+  getTotal,
+  getCurrencyCode,
+  getCategoryName,
+  isProcessedInvoice,
+} from '../types.js';
 import { SlackClient } from '../slack/client.js';
 import { buildDailySummaryBlocks, statusAttachment } from '../slack/blocks.js';
 import { isNotificationEnabled } from '../utils/filters.js';
@@ -72,7 +78,8 @@ export const handleDailySummary: IntegrationHandler<
       endDate: today.getTime(),
       limit: 1000,
     });
-    documents = result.items;
+    // Rejected uploads (not an invoice, invalid file, ...) are listed too
+    documents = result.items.filter(isProcessedInvoice);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error('Failed to fetch documents for summary', {

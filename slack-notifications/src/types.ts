@@ -509,6 +509,18 @@ export function getDisplayStatus(doc: Document): string {
 }
 
 /**
+ * Whether processing finished and produced an invoice.
+ *
+ * The backend sets `processed` after every attempt, including documents it
+ * rejected (not an invoice, invalid file, ...), and emits `document.processed`
+ * for them too. Only a missing or zero `errorType` means the document is an
+ * invoice.
+ */
+export function isProcessedInvoice(doc: Document): boolean {
+  return doc.processed === true && !doc.errorType;
+}
+
+/**
  * Gets the space ID from a document.
  */
 export function getSpaceId(doc: Document): string | undefined {
